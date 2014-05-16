@@ -20,15 +20,14 @@ find_package(OpenGL REQUIRED)
 add_subdirectory(src/openglsupport)
 include_directories(src/openglsupport)
 
-add_executable(test
-    src/sslsim.cc
-    src/sslsim.h
+add_executable(ssl-sim
+    #src/sslsim.cc
+    #src/sslsim.h
     src/main.cc
 )
-target_link_libraries(test
+target_link_libraries(ssl-sim
     OpenGLSupport
-    #${BULLET_LIBRARIES}
-    ${BULLET_DYNAMICS_LIBRARY}
-    ${BULLET_COLLISION_LIBRARY}
-    ${BULLET_MATH_LIBRARY}
+    ${BULLET_LIBRARIES}
 )
+
+# vim: et sw=4 ts=3 sts=4
