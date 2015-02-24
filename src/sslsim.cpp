@@ -34,7 +34,7 @@
 #endif
 
 #ifndef M_PI_8
-#define M_PI_8     0.5 * M_PI_4
+#define M_PI_8     (0.5 * M_PI_4)
 #endif
 
 
@@ -71,6 +71,180 @@ void drawFrame(btTransform &tr)
 
 // /LOCAL FUNCTIONS
 
+
+#define NUM_WHEELS 4
+#define JOINTS_COUNT (2 * NUM_WHEELS)
+#define SHAPES_COUNT (JOINTS_COUNT + 1)
+
+class Robot
+{
+  btDynamicsWorld* m_ownerWorld;
+  btAlignedObjectArray<btCollisionShape*> m_shapes;
+  btAlignedObjectArray<btRigidBody*> m_bodies;
+  btAlignedObjectArray<btTypedConstraint*> m_joints;
+  int num_wheels_;
+ public:
+  int num_wheels() { return num_wheels_; }
+  int joints_count() { return 2 * num_wheels_; }
+  int shapes_count() { return 2 * num_wheels_ + 1; }
+ private:
+
+  btRigidBody* localCreateRigidBody(btScalar mass, const btTransform& startTransform, btCollisionShape* shape)
+  {
+    bool isDynamic = (mass != 0.f);
+
+    btVector3 localInertia(0,0,0);
+    if (isDynamic)
+      shape->calculateLocalInertia(mass,localInertia);
+
+    btDefaultMotionState* myMotionState = new btDefaultMotionState(startTransform);
+    btRigidBody::btRigidBodyConstructionInfo rbInfo(mass,myMotionState,shape,localInertia);
+    btRigidBody* body = new btRigidBody(rbInfo);
+
+    m_ownerWorld->addRigidBody(body);
+
+    return body;
+  }
+
+
+ public:
+  Robot(btDynamicsWorld* ownerWorld, const btVector3& positionOffset, int num_wheels_=4)
+    : m_ownerWorld (ownerWorld), num_wheels_(num_wheels_)
+  {
+    btVector3 vUp(0, 1, 0);
+
+    //
+    // Setup geometry
+    //
+    float fBodySize  = 0.25f;
+    float fLegLength = 0.45f;
+    float fForeLegLength = 0.75f;
+    //m_shapes[0] = new btCapsuleShape(btScalar(fBodySize), btScalar(0.10));
+    m_shapes.push_back(new btCapsuleShape(btScalar(fBodySize), btScalar(0.10)));
+    int i;
+    for (i = 0; i < num_wheels(); ++i)
+    {
+      //m_shapes[1 + 2*i] = new btCapsuleShape(btScalar(0.10), btScalar(fLegLength));
+      //m_shapes[2 + 2*i] = new btCapsuleShape(btScalar(0.08), btScalar(fForeLegLength));
+      m_shapes.push_back(new btCapsuleShape(btScalar(0.10), btScalar(fLegLength)));
+      m_shapes.push_back(new btCapsuleShape(btScalar(0.08), btScalar(fForeLegLength)));
+    }
+
+    //
+    // Setup rigid bodies
+    //
+    float fHeight = 0.5;
+    btTransform offset; offset.setIdentity();
+    offset.setOrigin(positionOffset);
+
+    // root
+    btVector3 vRoot = btVector3(btScalar(0.), btScalar(fHeight), btScalar(0.));
+    btTransform transform;
+    transform.setIdentity();
+    transform.setOrigin(vRoot);
+    //m_bodies[0] = localCreateRigidBody(btScalar(1.), offset*transform, m_shapes[0]);
+    m_bodies.push_back(localCreateRigidBody(btScalar(1.), offset*transform, m_shapes[0]));
+    // legs
+    for (i = 0; i < num_wheels(); ++i)
+    {
+      float fAngle = 2 * M_PI * i / num_wheels();
+      float fSin = sin(fAngle);
+      float fCos = cos(fAngle);
+
+      transform.setIdentity();
+      btVector3 vBoneOrigin = btVector3(btScalar(fCos*(fBodySize+0.5*fLegLength)), btScalar(fHeight), btScalar(fSin*(fBodySize+0.5*fLegLength)));
+      transform.setOrigin(vBoneOrigin);
+
+      // thigh
+      btVector3 vToBone = (vBoneOrigin - vRoot).normalize();
+      btVector3 vAxis = vToBone.cross(vUp);
+      transform.setRotation(btQuaternion(vAxis, M_PI_2));
+      //m_bodies[1+2*i] = localCreateRigidBody(btScalar(1.), offset*transform, m_shapes[1+2*i]);
+      m_bodies.push_back(localCreateRigidBody(btScalar(1.), offset*transform, m_shapes[1+2*i]));
+
+      // shin
+      transform.setIdentity();
+      transform.setOrigin(btVector3(btScalar(fCos*(fBodySize+fLegLength)), btScalar(fHeight-0.5*fForeLegLength), btScalar(fSin*(fBodySize+fLegLength))));
+      m_bodies.push_back(localCreateRigidBody(btScalar(1.), offset*transform, m_shapes[2+2*i]));
+    }
+
+    // Setup some damping on the m_bodies
+    for (i = 0; i < shapes_count(); ++i)
+    {
+      m_bodies[i]->setDamping(0.05, 0.85);
+      m_bodies[i]->setDeactivationTime(0.8);
+      //m_bodies[i]->setSleepingThresholds(1.6, 2.5);
+      m_bodies[i]->setSleepingThresholds(0.5f, 0.5f);
+    }
+
+
+    //
+    // Setup the constraints
+    //
+    btHingeConstraint* hingeC;
+    //btConeTwistConstraint* coneC;
+
+    btTransform localA, localB, localC;
+
+    for (i = 0; i < num_wheels(); ++i)
+    {
+      float fAngle = 2 * M_PI * i / num_wheels();
+      float fSin = sin(fAngle);
+      float fCos = cos(fAngle);
+
+      // hip joints
+      localA.setIdentity(); localB.setIdentity();
+      localA.getBasis().setEulerZYX(0,-fAngle,0);
+      localA.setOrigin(btVector3(btScalar(fCos*fBodySize), btScalar(0.), btScalar(fSin*fBodySize)));
+      localB = m_bodies[1+2*i]->getWorldTransform().inverse() * m_bodies[0]->getWorldTransform() * localA;
+      hingeC = new btHingeConstraint(*m_bodies[0], *m_bodies[1+2*i], localA, localB);
+      hingeC->setLimit(btScalar(-0.75 * M_PI_4), btScalar(M_PI_8));
+      //hingeC->setLimit(btScalar(-0.1), btScalar(0.1));
+      //m_joints[2*i] = hingeC;
+      m_joints.push_back(hingeC);
+      m_ownerWorld->addConstraint(m_joints[2*i], true);
+
+      // knee joints
+      localA.setIdentity(); localB.setIdentity(); localC.setIdentity();
+      localA.getBasis().setEulerZYX(0,-fAngle,0);
+      localA.setOrigin(btVector3(btScalar(fCos*(fBodySize+fLegLength)), btScalar(0.), btScalar(fSin*(fBodySize+fLegLength))));
+      localB = m_bodies[1+2*i]->getWorldTransform().inverse() * m_bodies[0]->getWorldTransform() * localA;
+      localC = m_bodies[2+2*i]->getWorldTransform().inverse() * m_bodies[0]->getWorldTransform() * localA;
+      hingeC = new btHingeConstraint(*m_bodies[1+2*i], *m_bodies[2+2*i], localB, localC);
+      //hingeC->setLimit(btScalar(-0.01), btScalar(0.01));
+      hingeC->setLimit(btScalar(-M_PI_8), btScalar(0.2));
+      //m_joints[1+2*i] = hingeC;
+      m_joints.push_back(hingeC);
+      m_ownerWorld->addConstraint(m_joints[1+2*i], true);
+    }
+  }
+
+  virtual ~Robot()
+  {
+    int i;
+
+    // Remove all constraints
+    for (i = 0; i < joints_count(); ++i)
+    {
+      m_ownerWorld->removeConstraint(m_joints[i]);
+      delete m_joints[i]; m_joints[i] = 0;
+    }
+
+    // Remove all bodies and shapes
+    for (i = 0; i < shapes_count(); ++i)
+    {
+      m_ownerWorld->removeRigidBody(m_bodies[i]);
+
+      delete m_bodies[i]->getMotionState();
+
+      delete m_bodies[i]; m_bodies[i] = 0;
+      delete m_shapes[i]; m_shapes[i] = 0;
+    }
+  }
+
+  btTypedConstraint** GetJoints() {return &m_joints[0];}
+
+};
 
 
 #define NUM_LEGS 6
@@ -296,14 +470,26 @@ void SSLSim::initPhysics()
   }
 
   // Spawn one ragdoll
-  btVector3 startOffset(1,0.5,0);
-  spawnTestRig(startOffset, false);
-  startOffset.setValue(-2,0.5,0);
-  spawnTestRig(startOffset, true);
+  spawnRobot(btVector3(1,0.5,1), 3);
+  spawnRobot(btVector3(1,0.5,-1), 4);
+  spawnRobot(btVector3(-2,0.5,1), 5);
+  spawnRobot(btVector3(-2,0.5,-1), 6);
+  spawnRobot(btVector3(4,0.5,1), 7);
+  spawnRobot(btVector3(4,0.5,-1), 8);
+  //startOffset.setValue(-2,0.5,0);
+  //spawnTestRig(startOffset, true);
 
   clientResetScene();
 }
 
+
+void SSLSim::spawnRobot(const btVector3& startOffset, int num_wheels)
+{
+  //Robot* robot = new Robot(m_dynamicsWorld, startOffset);
+  //m_robot.push_back(robot);
+  Robot* robot = new Robot(m_dynamicsWorld, startOffset, num_wheels);
+  m_robots.push_back(robot);
+}
 
 void SSLSim::spawnTestRig(const btVector3& startOffset, bool bFixed)
 {
@@ -332,11 +518,26 @@ void SSLSim::setMotorTargets(btScalar deltaTime)
   //
   // set per-frame sinusoidal position targets using angular motor (hacky?)
   //
-  for (int r=0; r<m_rigs.size(); r++)
+  //for (int r=0; r<m_rigs.size(); r++)
+  //{
+  //  for (int i=0; i<2*NUM_LEGS; i++)
+  //  {
+  //    btHingeConstraint* hingeC = static_cast<btHingeConstraint*>(m_rigs[r]->GetJoints()[i]);
+  //    btScalar fCurAngle      = hingeC->getHingeAngle();
+
+  //    btScalar fTargetPercent = (int(m_Time / 1000) % int(m_fCyclePeriod)) / m_fCyclePeriod;
+  //    btScalar fTargetAngle   = 0.5 * (1 + sin(2 * M_PI * fTargetPercent));
+  //    btScalar fTargetLimitAngle = hingeC->getLowerLimit() + fTargetAngle * (hingeC->getUpperLimit() - hingeC->getLowerLimit());
+  //    btScalar fAngleError  = fTargetLimitAngle - fCurAngle;
+  //    btScalar fDesiredAngularVel = 1000000.f * fAngleError/ms;
+  //    hingeC->enableAngularMotor(true, fDesiredAngularVel, m_fMuscleStrength);
+  //  }
+  //}
+  for (int r = 0; r < m_robots.size(); ++r)
   {
-    for (int i=0; i<2*NUM_LEGS; i++)
+    for (int i = 0; i < 2 * m_robots[r]->num_wheels(); ++i)
     {
-      btHingeConstraint* hingeC = static_cast<btHingeConstraint*>(m_rigs[r]->GetJoints()[i]);
+      btHingeConstraint* hingeC = static_cast<btHingeConstraint*>(m_robots[r]->GetJoints()[i]);
       btScalar fCurAngle      = hingeC->getHingeAngle();
 
       btScalar fTargetPercent = (int(m_Time / 1000) % int(m_fCyclePeriod)) / m_fCyclePeriod;
@@ -375,8 +576,7 @@ void SSLSim::clientMoveAndDisplay()
   }
 
   glFlush();
-
-  glutSwapBuffers();
+  swapBuffers();
 }
 
 void SSLSim::displayCallback()
@@ -389,7 +589,7 @@ void SSLSim::displayCallback()
   renderme();
 
   glFlush();
-  glutSwapBuffers();
+  swapBuffers();
 }
 
 void SSLSim::keyboardCallback(unsigned char key, int x, int y)
@@ -426,6 +626,12 @@ void SSLSim::exitPhysics()
   {
     TestRig* rig = m_rigs[i];
     delete rig;
+  }
+
+  for (i=0;i<m_robots.size();i++)
+  {
+    Robot* robot = m_robots[i];
+    delete robot;
   }
 
   //cleanup in the reverse order of creation/initialization

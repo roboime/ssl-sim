@@ -46,7 +46,7 @@ static void glutSpecialKeyboardUpCallback(int key, int x, int y)
 
 static void glutReshapeCallback(int w, int h)
 {
-	gDemoApplication->reshape(w,h);
+	//gDemoApplication->reshape(w,h);
 }
 
 static void glutMoveAndDisplayCallback()

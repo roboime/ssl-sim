@@ -13,7 +13,11 @@
 #ifndef SSLSIM_H
 #define SSLSIM_H
 
+#ifdef USE_GLUT
 #include "GlutDemoApplication.h"
+#else
+#include "GLFWDemoApplication.h"
+#endif
 #include "LinearMath/btAlignedObjectArray.h"
 
 class btBroadphaseInterface;
@@ -24,7 +28,11 @@ class btConstraintSolver;
 struct btCollisionAlgorithmCreateFunc;
 class btDefaultCollisionConfiguration;
 
+#ifdef USE_GLUT
 class SSLSim : public GlutDemoApplication
+#else
+class SSLSim : public GLFWDemoApplication
+#endif
 {
  public:
   void initPhysics();
@@ -37,6 +45,7 @@ class SSLSim : public GlutDemoApplication
   }
 
   void spawnTestRig(const btVector3& startOffset, bool bFixed);
+  void spawnRobot(const btVector3& startOffset, int num_wheels=4);
 
   virtual void clientMoveAndDisplay();
 
@@ -60,6 +69,7 @@ class SSLSim : public GlutDemoApplication
   float m_fMuscleStrength;
 
   btAlignedObjectArray<class TestRig*> m_rigs;
+  btAlignedObjectArray<class Robot*> m_robots;
 
   //keep the collision shapes, for deletion/cleanup
   btAlignedObjectArray<btCollisionShape*> m_collisionShapes;
