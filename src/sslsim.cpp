@@ -13,10 +13,7 @@
 
 
 #include "btBulletDynamicsCommon.h"
-//#include "GlutStuff.h"
-#include "GL_ShapeDrawer.h"
 #include "LinearMath/btIDebugDraw.h"
-#include "GLDebugDrawer.h"
 
 #include "sslsim.h"
 

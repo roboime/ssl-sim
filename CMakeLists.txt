@@ -8,8 +8,6 @@ if("${CMAKE_GENERATOR}" STREQUAL "Ninja" AND "${CMAKE_CXX_COMPILER_ID}" STREQUAL
   add_definitions("-Xclang -fcolor-diagnostics")
 endif()
 
-#add_definitions("-DUSE_GLUT")
-
 include(${PROJECT_SOURCE_DIR}/cmake/Utils.cmake)
 standard_config()
 #standard_paths(${PROJECT_SOURCE_DIR} bin lib)
@@ -19,16 +17,16 @@ standard_paths(${PROJECT_BINARY_DIR} bin lib)
 find_package(Bullet REQUIRED)
 include_directories(${BULLET_INCLUDE_DIR})
 
-# Glut/OpenGL
-find_package(GLUT REQUIRED)
+# OpenGL/GLEW/GLFW
 find_package(OpenGL REQUIRED)
+find_package(GLEW REQUIRED)
+include_directories(${GLEW_INCLUDE_DIRS})
 find_package(PkgConfig REQUIRED)
 pkg_search_module(GLFW REQUIRED glfw3)
 include_directories(${GLFW_INCLUDE_DIRS})
 
 # OpenGL Helper
-add_subdirectory(src/openglsupport)
-include_directories(src/openglsupport)
+add_subdirectory(src/drawsupport)
 include_directories(src/drawsupport)
 
 add_executable(ssl-sim-cli
@@ -45,9 +43,12 @@ add_executable(ssl-sim-gui
     src/drawsupport/glfwstuff.cpp
 )
 target_link_libraries(ssl-sim-gui
-    OpenGLSupport
+    DrawSupport
     ${BULLET_LIBRARIES}
     ${OPENGL_LIBRARIES}
+    ${OPENGL_gl_LIBRARY}
+    ${OPENGL_glu_LIBRARY}
+    ${GLEW_LIBRARIES}
     ${GLFW_STATIC_LIBRARIES}
 )
 

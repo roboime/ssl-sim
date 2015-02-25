@@ -6,7 +6,7 @@
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 
-#include "../imgui/imgui.h"
+#include "imgui.h"
 #include "DemoApplication.h"
 #include "GLFWDemoApplication.h"
 
@@ -34,6 +34,7 @@ static void glfwMouseButtonCallback(GLFWwindow *window, int button, int action, 
 }
 
 static void glfwCursorPosCallback(GLFWwindow *window, double xoffset, double yoffset) {
+  demoApplication->mouseMotionFunc(xoffset, yoffset);
 }
 
 static void glfwCursorEnterCallback(GLFWwindow *window, int entered) {
@@ -65,6 +66,10 @@ static void glfwKeyCallback(GLFWwindow *window, int key, int scancode, int actio
     io.KeysDown[key] = false;
   io.KeyCtrl = (mods & GLFW_MOD_CONTROL) != 0;
   io.KeyShift = (mods & GLFW_MOD_SHIFT) != 0;
+
+  // Custom
+  if (key == GLFW_KEY_ESCAPE && action == GLFW_RELEASE)
+    glfwSetWindowShouldClose(window, 1);
 }
 
 static void glfwCharModsCallback(GLFWwindow *window, unsigned int codepoint, int mods) {
@@ -378,8 +383,8 @@ int glfwmain(int argc, char **argv, int width, int height, const char* title, De
   //demoApplication->myinit();
   InitImGui();
 
-  bool show_test_window = true;
-  bool show_another_window = false;
+  //bool show_test_window = true;
+  //bool show_another_window = false;
 
   while (!glfwWindowShouldClose(window)) {
     ImGuiIO& io = ImGui::GetIO();
@@ -390,27 +395,27 @@ int glfwmain(int argc, char **argv, int width, int height, const char* title, De
     // 1. Show a simple window
     // Tip: if we don't call ImGui::Begin()/ImGui::End() the widgets appears in a window automatically called "Debug"
     {
-      static float f;
-      ImGui::Text("Hello, world!");
-      ImGui::SliderFloat("float", &f, 0.0f, 1.0f);
-      ImGui::ColorEdit3("clear color", (float*)&clear_col);
-      if (ImGui::Button("Test Window")) show_test_window ^= 1;
-      if (ImGui::Button("Another Window")) show_another_window ^= 1;
+      //static float f;
+      //ImGui::Text("Hello, world!");
+      //ImGui::SliderFloat("float", &f, 0.0f, 1.0f);
+      //ImGui::ColorEdit3("clear color", (float*)&clear_col);
+      //if (ImGui::Button("Test Window")) show_test_window ^= 1;
+      //if (ImGui::Button("Another Window")) show_another_window ^= 1;
       ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
     }
 
     // 2. Show another simple window, this time using an explicit Begin/End pair
-    if (show_another_window) {
-      ImGui::Begin("Another Window", &show_another_window, ImVec2(200,100));
-      ImGui::Text("Hello");
-      ImGui::End();
-    }
+    //if (show_another_window) {
+    //  ImGui::Begin("Another Window", &show_another_window, ImVec2(200,100));
+    //  ImGui::Text("Hello");
+    //  ImGui::End();
+    //}
 
     // 3. Show the ImGui test window. Most of the sample code is in ImGui::ShowTestWindow()
-    if (show_test_window) {
-      ImGui::SetNextWindowPos(ImVec2(650, 20), ImGuiSetCondition_FirstUseEver);
-      ImGui::ShowTestWindow(&show_test_window);
-    }
+    //if (show_test_window) {
+    //  ImGui::SetNextWindowPos(ImVec2(650, 20), ImGuiSetCondition_FirstUseEver);
+    //  ImGui::ShowTestWindow(&show_test_window);
+    //}
 
     // Rendering
     render();

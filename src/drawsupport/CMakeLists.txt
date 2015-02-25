@@ -9,8 +9,8 @@ add_library(DrawSupport
     GLDebugFont.h
     GL_ShapeDrawer.cpp
     GL_ShapeDrawer.h
-    GLDebugDrawer.cpp
-    GLDebugDrawer.h
+    #GLDebugDrawer.cpp
+    #GLDebugDrawer.h
 
     DemoApplication.cpp
     DemoApplication.h
@@ -19,6 +19,14 @@ add_library(DrawSupport
     GLFWDemoApplication.h
     glfwstuff.cpp
     glfwstuff.h
+
+    # ImGui
+    imconfig.h
+    imgui.cpp
+    imgui.h
+    stb_rect_pack.h
+    stb_textedit.h
+    stb_truetype.h
 )
 
 include_directories(.)

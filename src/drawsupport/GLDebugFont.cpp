@@ -14,6 +14,7 @@ subject to the following restrictions:
 */
 
 #include "GLDebugFont.h"
+#include "imgui.h"
 
 
 #ifdef _WIN32//for glut.h
@@ -221,9 +222,9 @@ void	GLDebugDrawStringInternal(int x,int y,const char* string, const btVector3& 
 
 void	GLDebugDrawString(int x,int y,const char* string)
 {
-
-	btVector3 rgb(1,1,1);
-	GLDebugDrawStringInternal(x,y,string,rgb);
+  ImGui::Text(string);
+	//btVector3 rgb(1,1,1);
+	//GLDebugDrawStringInternal(x,y,string,rgb);
 }
 
 
