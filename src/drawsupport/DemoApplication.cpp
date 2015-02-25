@@ -669,7 +669,7 @@ void DemoApplication::mouseFunc(int button, int state, int x, int y)
     m_mouseOldY = y;
 
 	updateModifierKeys();
-	if ((m_modifierKeys& BT_ACTIVE_ALT) && (state==0))
+	if ((m_modifierKeys& GLFW_MOD_ALT) && (state==0))
 	{
 		return;
 	}
@@ -776,7 +776,7 @@ void DemoApplication::mouseFunc(int button, int state, int x, int y)
 								
 
 
-								if ((m_modifierKeys& BT_ACTIVE_SHIFT)==0)
+								if ((m_modifierKeys& GLFW_MOD_SHIFT)==0)
 								{
 									btTransform tr;
 									tr.setIdentity();
@@ -934,7 +934,7 @@ void	DemoApplication::mouseMotionFunc(int x,int y)
 
 
 	///only if ALT key is pressed (Maya style)
-	if (m_modifierKeys& BT_ACTIVE_ALT)
+	if (m_modifierKeys& GLFW_MOD_ALT)
 	{
 		if(m_mouseButtons & 2)
 		{
@@ -1057,7 +1057,7 @@ extern CProfileIterator * m_profileIterator;
 void DemoApplication::displayProfileString(int xOffset,int yStart,char* message)
 {
 	glRasterPos3f(btScalar(xOffset),btScalar(yStart),btScalar(0));
-	GLDebugDrawString(xOffset,yStart,message);
+	//GLDebugDrawString(xOffset,yStart,message);
 }
 
 

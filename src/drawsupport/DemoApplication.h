@@ -17,7 +17,7 @@ subject to the following restrictions:
 #define DEMO_APPLICATION_H
 
 
-#include "GlutStuff.h"
+#include "glfwstuff.h"
 #include "GL_ShapeDrawer.h"
 
 #include <stdlib.h>

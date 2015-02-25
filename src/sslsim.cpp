@@ -13,7 +13,7 @@
 
 
 #include "btBulletDynamicsCommon.h"
-#include "GlutStuff.h"
+//#include "GlutStuff.h"
 #include "GL_ShapeDrawer.h"
 #include "LinearMath/btIDebugDraw.h"
 #include "GLDebugDrawer.h"
@@ -554,7 +554,7 @@ void SSLSim::setMotorTargets(btScalar deltaTime)
 
 void SSLSim::clientMoveAndDisplay()
 {
-  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+  //glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
   //simple dynamics world doesn't handle fixed-time-stepping
   float deltaTime = getDeltaTimeMicroseconds()/1000000.f;
@@ -575,21 +575,21 @@ void SSLSim::clientMoveAndDisplay()
     drawFrame(body->getWorldTransform());
   }
 
-  glFlush();
-  swapBuffers();
+  //glFlush();
+  //swapBuffers();
 }
 
 void SSLSim::displayCallback()
 {
-  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); 
+  //glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
   if (m_dynamicsWorld)
     m_dynamicsWorld->debugDrawWorld();
 
   renderme();
 
-  glFlush();
-  swapBuffers();
+  //glFlush();
+  //swapBuffers();
 }
 
 void SSLSim::keyboardCallback(unsigned char key, int x, int y)
@@ -669,5 +669,5 @@ void SSLSim::exitPhysics()
   //delete dispatcher
   delete m_dispatcher;
 
-  delete m_collisionConfiguration;	
+  delete m_collisionConfiguration;
 }

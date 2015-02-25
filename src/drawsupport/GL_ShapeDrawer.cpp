@@ -20,7 +20,7 @@ subject to the following restrictions:
 
 
 
-#include "GlutStuff.h"
+#include "glfwstuff.h"
 #include "GL_ShapeDrawer.h"
 #include "BulletCollision/CollisionShapes/btPolyhedralConvexShape.h"
 #include "BulletCollision/CollisionShapes/btTriangleMeshShape.h"
