@@ -9,18 +9,18 @@
 #if defined(__APPLE__) && !defined (VMDMESA)
 #include <OpenGL/OpenGL.h>
 #include <OpenGL/gl.h>
-#include <OpenGL/glu.h>
-#include <GLUT/glut.h>
+//#include <OpenGL/glu.h>
+//#include <GLUT/glut.h>
 #else
 
 
 #ifdef _WINDOWS
 #include <windows.h>
 #include <GL/gl.h>
-#include <GL/glu.h>
+//#include <GL/glu.h>
 #else
 #include <GL/gl.h>
-#include <GL/glut.h>
+//#include <GL/glut.h>
 #endif //_WINDOWS
 #endif //APPLE
 

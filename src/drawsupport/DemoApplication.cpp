@@ -31,8 +31,9 @@ subject to the following restrictions:
 #include "LinearMath/btQuickprof.h"
 #include "LinearMath/btDefaultMotionState.h"
 #include "LinearMath/btSerializer.h"
-#include "GLDebugFont.h"
 
+#include "glutils.h"
+#include "imgui.h"
 
 extern bool gDisableDeactivation;
 int numObjects = 0;
@@ -243,7 +244,7 @@ void DemoApplication::updateCamera() {
     glFrustum (-aspect * m_frustumZNear, aspect * m_frustumZNear, -m_frustumZNear, m_frustumZNear, m_frustumZNear, m_frustumZFar);
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
-    gluLookAt(m_cameraPosition[0], m_cameraPosition[1], m_cameraPosition[2],
+    myglLookAt(m_cameraPosition[0], m_cameraPosition[1], m_cameraPosition[2],
         m_cameraTargetPosition[0], m_cameraTargetPosition[1], m_cameraTargetPosition[2],
         m_cameraUp.getX(),m_cameraUp.getY(),m_cameraUp.getZ());
   }
@@ -294,7 +295,7 @@ void DemoApplication::zoomOut()
 
 void DemoApplication::reshape(int w, int h)
 {
-  GLDebugResetFont(w,h);
+  //GLDebugResetFont(w,h);
 
   m_glutScreenWidth = w;
   m_glutScreenHeight = h;
@@ -992,7 +993,8 @@ void DemoApplication::setOrthographicProjection()
   // reset matrix
   glLoadIdentity();
   // set a 2D orthographic projection
-  gluOrtho2D(0, m_glutScreenWidth, 0, m_glutScreenHeight);
+  //gluOrtho2D(0, m_glutScreenWidth, 0, m_glutScreenHeight);
+  glOrtho(0, m_glutScreenWidth, 0, m_glutScreenHeight,-1,1);
   glMatrixMode(GL_MODELVIEW);
   glLoadIdentity();
 
@@ -1021,7 +1023,8 @@ extern CProfileIterator * m_profileIterator;
 void DemoApplication::displayProfileString(int xOffset,int yStart,char* message)
 {
   glRasterPos3f(btScalar(xOffset),btScalar(yStart),btScalar(0));
-  GLDebugDrawString(xOffset,yStart,message);
+  ImGui::Text(message);
+  //GLDebugDrawString(xOffset,yStart,message);
 }
 
 

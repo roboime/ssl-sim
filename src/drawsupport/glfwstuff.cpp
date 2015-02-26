@@ -261,6 +261,8 @@ void LoadFontsTexture() {
 
 void InitImGui() {
   ImGuiIO& io = ImGui::GetIO();
+  io.IniFilename = "ssl-sim-gui.ini";
+  io.LogFilename = "ssl-sim.log";
   io.DeltaTime = 1.0f/60.0f;                                    // Time elapsed since last frame, in seconds (in this sample app we'll override this every frame because our time step is variable)
   io.KeyMap[ImGuiKey_Tab] = GLFW_KEY_TAB;                       // Keyboard mapping. ImGui will use those indices to peek into the io.KeyDown[] array.
   io.KeyMap[ImGuiKey_LeftArrow] = GLFW_KEY_LEFT;
