@@ -1,28 +1,26 @@
+/*
+ * Small Size League Simulator (Experimental) (c) Jan Segre 2015
+ *
+ * This software is provided 'as-is', without any express or implied warranty.
+ * In no event will the authors be held liable for any damages arising from the
+ * use of this software.  Permission is granted to anyone to use this software
+ * for any purpose, including commercial applications, and to alter it and
+ * redistribute it freely, subject to the following restrictions:
+ */
+
 #ifndef GLFW_STUFF_H
 #define GLFW_STUFF_H
 
-#ifdef _WIN32//for glut.h
-#include <windows.h>
-#endif
-
-//think different
-#if defined(__APPLE__) && !defined (VMDMESA)
+#if defined(__APPLE__) && !defined(VMDMESA)
+// think different
 #include <OpenGL/OpenGL.h>
 #include <OpenGL/gl.h>
-//#include <OpenGL/glu.h>
-//#include <GLUT/glut.h>
-#else
-
-
-#ifdef _WINDOWS
+#elif defined(_WINDOWS) || defined(_WIN32)
 #include <windows.h>
 #include <GL/gl.h>
-//#include <GL/glu.h>
 #else
 #include <GL/gl.h>
-//#include <GL/glut.h>
-#endif //_WINDOWS
-#endif //APPLE
+#endif
 
 #include <GLFW/glfw3.h>
 
@@ -40,6 +38,7 @@
 
 class DemoApplication;
 
-int glfwmain(int argc, char **argv, int width, int height, const char* title, DemoApplication* demoApp);
+int glfwmain(int argc, char **argv, int width, int height, const char *title,
+             DemoApplication *demoApp);
 
-#endif //GLFW_STUFF_H
+#endif // GLFW_STUFF_H

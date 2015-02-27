@@ -1,3 +1,13 @@
+/*
+ * Small Size League Simulator (Experimental) (c) Jan Segre 2015
+ *
+ * This software is provided 'as-is', without any express or implied warranty.
+ * In no event will the authors be held liable for any damages arising from the
+ * use of this software.  Permission is granted to anyone to use this software
+ * for any purpose, including commercial applications, and to alter it and
+ * redistribute it freely, subject to the following restrictions:
+ */
+
 #include <iostream>
 #include <signal.h>
 #include <stdlib.h>
@@ -27,8 +37,7 @@
 bool keep_going = true;
 void sigint_handler(int s);
 
-
-int main(int argc, char* argv[]) {
+int main(int argc, char *argv[]) {
   std::cout << "Hello World!" << std::endl;
 
   // Handle SIGINT (Ctrl+C)
@@ -39,47 +48,57 @@ int main(int argc, char* argv[]) {
   sigaction(SIGINT, &sigIntHandler, NULL);
 
   // Build the broadphase
-  btBroadphaseInterface* broadphase = new btDbvtBroadphase();
+  btBroadphaseInterface *broadphase = new btDbvtBroadphase();
 
   // Set up the collision configuration and dispatcher
-  btDefaultCollisionConfiguration* collisionConfiguration = new btDefaultCollisionConfiguration();
-  btCollisionDispatcher* dispatcher = new btCollisionDispatcher(collisionConfiguration);
-  //btGImpactCollisionAlgorithm::registerAlgorithm(dispatcher);
+  btDefaultCollisionConfiguration *collisionConfiguration =
+      new btDefaultCollisionConfiguration();
+  btCollisionDispatcher *dispatcher =
+      new btCollisionDispatcher(collisionConfiguration);
+  // btGImpactCollisionAlgorithm::registerAlgorithm(dispatcher);
 
   // The actual physics solver
-  btSequentialImpulseConstraintSolver* solver = new btSequentialImpulseConstraintSolver;
+  btSequentialImpulseConstraintSolver *solver =
+      new btSequentialImpulseConstraintSolver;
 
   // The world
-  btDiscreteDynamicsWorld* dynamicsWorld = new btDiscreteDynamicsWorld(dispatcher, broadphase, solver, collisionConfiguration);
+  btDiscreteDynamicsWorld *dynamicsWorld = new btDiscreteDynamicsWorld(
+      dispatcher, broadphase, solver, collisionConfiguration);
   dynamicsWorld->setGravity(btVector3(0, 0, -980.f));
 
   // Create the ground
-  btCollisionShape* groundShape = new btStaticPlaneShape(btVector3(0, 0, 1), 1);
-  btDefaultMotionState* groundMotionState = new btDefaultMotionState(btTransform(btQuaternion(0, 0, 0, 1), btVector3(0, 0, -1)));
-  btRigidBody::btRigidBodyConstructionInfo groundRigidBodyCI(0, groundMotionState, groundShape, btVector3(0, 0, 0));
-  btRigidBody* groundRigidBody = new btRigidBody(groundRigidBodyCI);
+  btCollisionShape *groundShape = new btStaticPlaneShape(btVector3(0, 0, 1), 1);
+  btDefaultMotionState *groundMotionState = new btDefaultMotionState(
+      btTransform(btQuaternion(0, 0, 0, 1), btVector3(0, 0, -1)));
+  btRigidBody::btRigidBodyConstructionInfo groundRigidBodyCI(
+      0, groundMotionState, groundShape, btVector3(0, 0, 0));
+  btRigidBody *groundRigidBody = new btRigidBody(groundRigidBodyCI);
   dynamicsWorld->addRigidBody(groundRigidBody);
 
   // Create a falling sphere
-  btCollisionShape* fallShape = new btSphereShape(2.15); // 43mm diameter
-  btDefaultMotionState* fallMotionState = new btDefaultMotionState(btTransform(btQuaternion(0, 0, 0, 1), btVector3(0, 0, 5000)));
+  btCollisionShape *fallShape = new btSphereShape(2.15); // 43mm diameter
+  btDefaultMotionState *fallMotionState = new btDefaultMotionState(
+      btTransform(btQuaternion(0, 0, 0, 1), btVector3(0, 0, 5000)));
   btScalar fallMass = 0.046; // 46g
   btVector3 fallInertia(0, 0, 0);
   fallShape->calculateLocalInertia(fallMass, fallInertia);
-  btRigidBody::btRigidBodyConstructionInfo fallRigidBodyCI(fallMass, fallMotionState, fallShape, fallInertia);
-  btRigidBody* fallRigidBody = new btRigidBody(fallRigidBodyCI);
+  btRigidBody::btRigidBodyConstructionInfo fallRigidBodyCI(
+      fallMass, fallMotionState, fallShape, fallInertia);
+  btRigidBody *fallRigidBody = new btRigidBody(fallRigidBodyCI);
   dynamicsWorld->addRigidBody(fallRigidBody);
 
   // Create a cylinder
-  btCollisionShape* cylShape = new btCylinderShapeZ(btVector3(9, 9, 7.5)); // 180mm diameter, 150mm height
-  btDefaultMotionState* cylMotionState = new btDefaultMotionState(btTransform(btQuaternion(0, 0, 0, 1), btVector3(0, 0, 8)));
+  btCollisionShape *cylShape = new btCylinderShapeZ(
+      btVector3(9, 9, 7.5)); // 180mm diameter, 150mm height
+  btDefaultMotionState *cylMotionState = new btDefaultMotionState(
+      btTransform(btQuaternion(0, 0, 0, 1), btVector3(0, 0, 8)));
   btScalar cylMass = 2; // 2kg
   btVector3 cylInertia(0, 0, 0);
   cylShape->calculateLocalInertia(cylMass, cylInertia);
-  btRigidBody::btRigidBodyConstructionInfo cylRigidBodyCI(cylMass, cylMotionState, cylShape, cylInertia);
-  btRigidBody* cylRigidBody = new btRigidBody(cylRigidBodyCI);
+  btRigidBody::btRigidBodyConstructionInfo cylRigidBodyCI(
+      cylMass, cylMotionState, cylShape, cylInertia);
+  btRigidBody *cylRigidBody = new btRigidBody(cylRigidBodyCI);
   dynamicsWorld->addRigidBody(cylRigidBody);
-
 
   // Step the simulation a few times
   for (int i = 0; i < 240; i++) {
@@ -87,15 +106,12 @@ int main(int argc, char* argv[]) {
     btTransform trans;
 
     fallRigidBody->getMotionState()->getWorldTransform(trans);
-    std::cout
-      << "sphere: ("
-      << trans.getOrigin().getX() << ", "
-      << trans.getOrigin().getY() << ", "
-      << trans.getOrigin().getZ() << ")"
-      << std::endl;
+    std::cout << "sphere: (" << trans.getOrigin().getX() << ", "
+              << trans.getOrigin().getY() << ", " << trans.getOrigin().getZ()
+              << ")" << std::endl;
 
-    //cylRigidBody->getMotionState()->getWorldTransform(trans);
-    //std::cout
+    // cylRigidBody->getMotionState()->getWorldTransform(trans);
+    // std::cout
     //  << "cylinder: ("
     //  << trans.getOrigin().getX() << ", "
     //  << trans.getOrigin().getY() << ", "
@@ -103,7 +119,7 @@ int main(int argc, char* argv[]) {
     //  << std::endl;
   }
 
-  //while (keep_going) {
+  // while (keep_going) {
   //}
 
   // Clean this mess up

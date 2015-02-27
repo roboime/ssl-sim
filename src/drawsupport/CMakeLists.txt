@@ -10,12 +10,8 @@ include_directories(.)
 add_library(DrawSupport
     GL_ShapeDrawer.cpp
     GL_ShapeDrawer.h
-
     DemoApplication.cpp
     DemoApplication.h
-
-    #GLFWDemoApplication.cpp
-    GLFWDemoApplication.h
     glfwstuff.cpp
     glfwstuff.h
 
