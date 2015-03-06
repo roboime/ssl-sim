@@ -1,5 +1,9 @@
 /*
- * Small Size League Simulator (Experimental) (c) Jan Segre 2015
+ * This file is part of the ssl-sim project.
+ *
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  *
  * This software is provided 'as-is', without any express or implied warranty.
  * In no event will the authors be held liable for any damages arising from the
