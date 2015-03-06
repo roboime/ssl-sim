@@ -1,7 +1,7 @@
 ssl-sim
 =======
 
-[![MPL License](https://img.shields.io/badge/license-MPL-blue.svg)](https://www.mozilla.org/MPL/2.0/])
+[![MPL License](https://img.shields.io/badge/license-MPL-blue.svg)](https://www.mozilla.org/MPL/2.0/)
 
 THIS IS A WORK IN PROGRESS. NOT SUITABLE FOR USAGE YET.
 
