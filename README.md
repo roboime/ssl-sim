@@ -1,19 +1,14 @@
 ssl-sim
 =======
 
-Small Size League Simulator (Experimental)
-------------------------------------------
+[![MPL License](https://img.shields.io/badge/license-MPL-blue.svg)](https://www.mozilla.org/MPL/2.0/])
 
-This is an experimental simulator using the Bullet Physics Engine to
-aid on the development of AIs for this Robocup category.
+THIS IS A WORK IN PROGRESS. NOT SUITABLE FOR USAGE YET.
 
-The initial purpose is a simple simulator which receives the grSim protocol
-end sends the SSL Vision protocol.
+This is a physics simulator for Robocup Small Size League.
+Main goals are:
 
-It is not the purpose of this project to provide a good graphical interface
-that purpose seems much more fit to grSim which in the future will be able
-to benefit from this project which uses Bullet to provide fast physics.
-
-Futurely this should become a framework to allow simulation for other purposes
-than merley being able to play a game. And so, be used in the grSim to replace
-ODE with Bullet.
+1. Fast, consistent and fast physics.
+2. Simple API for usage in code to aid AI.
+3. Stand-alone GUI which speaks default protocols (grSim and ssl-vision).
+4. Integrated referee for fully unsupervised matches.
