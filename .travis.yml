@@ -13,8 +13,13 @@ install:
   # Google Protobuf
   - sudo apt-get install -qq protobuf-compiler libprotobuf-dev
   # GLFW
-  - git clone https://github.com/glfw/glfw.git
   - sudo apt-get install -qq xorg-dev libgl1-mesa-dev libglu1-mesa-dev
-  - cd glfw && git checkout 3.1 && cmake . && make && sudo make install && cd ..
+  - wget https://github.com/glfw/glfw/archive/3.1.tar.gz
+  - tar xzf 3.1.tar.gz
+  - cd glfw-3.1 && cmake . && make && sudo make install && cd ..
+  # Bullet
+  - wget https://bullet.googlecode.com/files/bullet-2.82-r2704.tgz
+  - tar xzf bullet-2.82-r2704.tgz
+  - cd bullet-2.82-r2704 && mkdir build && cd build && cmake .. && make -j8 && sudo make install
 script:
   - mkdir build && cd build && cmake .. -G "Unix Makefiles" && make -j8
