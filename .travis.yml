@@ -14,7 +14,7 @@ install:
   # Google Protobuf
   - sudo apt-get install -qq protobuf-compiler libprotobuf-dev
   # GLFW
-  - sudo apt-get install -qq xorg-dev libgl1-mesa-dev libglu1-mesa-dev
+  - sudo apt-get install -qq xorg-dev libglew-dev
   - wget https://github.com/glfw/glfw/archive/3.1.tar.gz && tar xzf 3.1.tar.gz
   - cd glfw-3.1 && cmake . && make && sudo make install && cd ..
   # Bullet
