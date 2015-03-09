@@ -19,5 +19,5 @@ install:
 script:
   - mkdir build
   - cd build
-  - cmake
+  - cmake .. -G "Unix Makefiles"
   - make -j8
