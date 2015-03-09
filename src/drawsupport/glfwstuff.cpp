@@ -385,7 +385,7 @@ int glfwmain(int argc, char **argv, int width, int height, const char *title,
   // demoApplication->myinit();
   InitImGui();
 
-  // bool show_test_window = true;
+  bool show_test_window = true;
   // bool show_another_window = false;
 
   while (!glfwWindowShouldClose(window)) {
@@ -402,7 +402,8 @@ int glfwmain(int argc, char **argv, int width, int height, const char *title,
       // ImGui::Text("Hello, world!");
       // ImGui::SliderFloat("float", &f, 0.0f, 1.0f);
       // ImGui::ColorEdit3("clear color", (float*)&clear_col);
-      // if (ImGui::Button("Test Window")) show_test_window ^= 1;
+      if (ImGui::Button("Test Window"))
+        show_test_window ^= 1;
       // if (ImGui::Button("Another Window")) show_another_window ^= 1;
       ImGui::Text("Application average %.3f ms/frame (%.1f FPS)",
                   1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
@@ -416,12 +417,11 @@ int glfwmain(int argc, char **argv, int width, int height, const char *title,
     //}
 
     // 3. Show the ImGui test window. Most of the sample code is in
-    // ImGui::ShowTestWindow()
-    // if (show_test_window) {
-    //  ImGui::SetNextWindowPos(ImVec2(650, 20),
-    //  ImGuiSetCondition_FirstUseEver);
-    //  ImGui::ShowTestWindow(&show_test_window);
-    //}
+    // ImGui::ShowTestWindow();
+    if (show_test_window) {
+      ImGui::SetNextWindowPos(ImVec2(650, 20), ImGuiSetCondition_FirstUseEver);
+      ImGui::ShowTestWindow(&show_test_window);
+    }
 
     // Rendering
     render();
