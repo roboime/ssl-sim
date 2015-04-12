@@ -10,7 +10,7 @@
 #define DRAW_H
 
 void draw_set_debug_mode(int mode);
-void draw_physics_world(struct World *world);
+void draw_world(struct World *world);
 void draw_rot_left(void);
 void draw_rot_right(void);
 void draw_rot_up(void);
@@ -22,8 +22,8 @@ void draw_walk_right(void);
 void draw_walk_front(void);
 void draw_walk_back(void);
 void draw_set_screen_size(int width, int height);
-void draw_set_screen_pos(double x, double y);
 void draw_set_screen_active(bool active);
-void draw_set_screen_drag(int button);
+void draw_set_screen_pos(double x, double y);
+void draw_set_screen_button(int button);
 
 #endif

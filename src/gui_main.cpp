@@ -34,7 +34,7 @@ static bool mousePressed[2] = {false, false};
 
 // static void glfwMouseButtonCallback(GLFWwindow *window, int button, int
 // action, int mods) {
-static void glfwMouseButtonCallback(GLFWwindow *, int button, int action, int) {
+static void glfwMouseButtonCallback(GLFWwindow *, int button, int action, int mods) {
   // Application
   // double _x, _y;
   // glfwGetCursorPos(window, &_x, &_y);
@@ -47,9 +47,9 @@ static void glfwMouseButtonCallback(GLFWwindow *, int button, int action, int) {
     mousePressed[button] = true;
 
   if (!ImGui::IsMouseHoveringAnyWindow() && action == GLFW_PRESS)
-    draw_set_screen_drag(1 + button);
+    draw_set_screen_button((1 + button) | (mods << 4));
   if (action == GLFW_RELEASE)
-    draw_set_screen_drag(0);
+    draw_set_screen_button(0);
 }
 
 // static void glfwCursorPosCallback(GLFWwindow *window, double xoffset, double
@@ -61,8 +61,6 @@ static void glfwCursorPosCallback(GLFWwindow *, double xpos, double ypos) {
 
 static void glfwCursorEnterCallback(GLFWwindow *, int entered) {
   draw_set_screen_active(entered == GL_TRUE);
-  if (entered != GL_TRUE)
-    draw_set_screen_drag(0);
 }
 
 static void glfwScrollCallback(GLFWwindow *, double, double yoffset) {
@@ -180,23 +178,23 @@ static void glfwCharModsCallback(GLFWwindow *, unsigned int codepoint, int) {
     ImGui::GetIO().AddInputCharacter((unsigned short)codepoint);
 }
 
-static void glfwDropCallback(GLFWwindow *, int, const char **) {}
-
 static void render();
-static void UpdateImGui();
-// static void glfwWindowRefreshCallback(GLFWwindow *window) {
-//  // FIXME: this is probably broken, some more thinking has to go into this
-//  UpdateImGui();
-//  // render();
-//  demoApplication->displayCallback();
-//  glfwSwapBuffers(window);
-//}
+static void update_imgui(GLFWwindow *window);
+
+#if 0
+static void glfwWindowRefreshCallback(GLFWwindow *window) {
+  // FIXME: this is probably broken, some more thinking has to go into this
+  update_imgui(window);
+  render();
+  glfwSwapBuffers(window);
+}
+#endif
 
 static bool isActive = false;
 static void glfwWindowFocusCallback(GLFWwindow *, int focus) {
   isActive = (focus == GL_TRUE);
   if (focus != GL_TRUE)
-    draw_set_screen_drag(0);
+    draw_set_screen_button(0);
 }
 
 inline void gui_sync(void) {
@@ -206,10 +204,11 @@ inline void gui_sync(void) {
     std::this_thread::sleep_for(std::chrono::milliseconds(15));
 }
 
-static void glfwWindowSizeCallback(GLFWwindow *, int width, int height) {
+static void glfwWindowSizeCallback(GLFWwindow *window, int width, int height) {
   draw_set_screen_size(width, height);
+  draw_set_screen_active(false);
   // glfwPollEvents();
-  UpdateImGui();
+  update_imgui(window);
   render();
   glfwSwapBuffers(window);
 }
@@ -219,7 +218,7 @@ static void glfwWindowSizeCallback(GLFWwindow *, int width, int height) {
 // If text or lines are blurry when integrating ImGui in your engine:
 // - in your Render function, try translating your projection matrix by
 // (0.5f,0.5f) or (0.375f,0.375f)
-static void ImImpl_RenderDrawLists(ImDrawList **const cmd_lists,
+static void imgui_renderdrawlists(ImDrawList **const cmd_lists,
                                    int cmd_lists_count) {
   if (cmd_lists_count == 0)
     return;
@@ -292,15 +291,15 @@ static void ImImpl_RenderDrawLists(ImDrawList **const cmd_lists,
 
 // NB: ImGui already provide OS clipboard support for Windows so this isn't
 // needed if you are using Windows only.
-static const char *ImImpl_GetClipboardTextFn() {
+static const char *imgui_getclipboard() {
   return glfwGetClipboardString(window);
 }
 
-static void ImImpl_SetClipboardTextFn(const char *text) {
+static void imgui_setclipboard(const char *text) {
   glfwSetClipboardString(window, text);
 }
 
-void LoadFontsTexture() {
+void load_fonts_texture() {
   ImGuiIO &io = ImGui::GetIO();
   // ImFont* my_font1 = io.Fonts->AddFontDefault();
   // ImFont* my_font2 =
@@ -331,7 +330,7 @@ void LoadFontsTexture() {
   io.Fonts->TexID = (void *)(intptr_t) tex_id;
 }
 
-void InitImGui() {
+void init_imgui() {
   ImGuiIO &io = ImGui::GetIO();
   io.IniFilename = "ssl-sim-gui.ini";
   io.LogFilename = "ssl-sim.log";
@@ -358,14 +357,14 @@ void InitImGui() {
   io.KeyMap[ImGuiKey_Y] = GLFW_KEY_Y;
   io.KeyMap[ImGuiKey_Z] = GLFW_KEY_Z;
 
-  io.RenderDrawListsFn = ImImpl_RenderDrawLists;
-  io.SetClipboardTextFn = ImImpl_SetClipboardTextFn;
-  io.GetClipboardTextFn = ImImpl_GetClipboardTextFn;
+  io.RenderDrawListsFn = imgui_renderdrawlists;
+  io.SetClipboardTextFn = imgui_setclipboard;
+  io.GetClipboardTextFn = imgui_getclipboard;
 
-  LoadFontsTexture();
+  load_fonts_texture();
 }
 
-static void UpdateImGui() {
+static void update_imgui(GLFWwindow *window) {
   ImGuiIO &io = ImGui::GetIO();
 
   // Setup resolution (every frame to accommodate for window resizing)
@@ -407,18 +406,18 @@ static void UpdateImGui() {
 
   // Start the frame
   ImGui::NewFrame();
+
+  ImGui::Text("%.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
 }
 
-static ImVec4 clear_col = ImColor(DARK_GREEN[0], DARK_GREEN[1], DARK_GREEN[2]);
 void render() {
+  static ImVec4 clear_col = ImColor(DARK_GREEN[0], DARK_GREEN[1], DARK_GREEN[2]);
   ImGuiIO &io = ImGui::GetIO();
   glViewport(0, 0, (int)io.DisplaySize.x, (int)io.DisplaySize.y);
   glClearColor(clear_col.x, clear_col.y, clear_col.z, clear_col.w);
-  // glClear(GL_COLOR_BUFFER_BIT);
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-  // demoApplication->moveAndDisplay();
-  draw_physics_world(world);
+  draw_world(world);
 
   glMatrixMode(GL_TEXTURE);
   glLoadIdentity();
@@ -429,7 +428,6 @@ void render() {
   glEnable(GL_TEXTURE_2D);
   glBlendFunc(GL_SRC_ALPHA, GL_ONE);
   glDepthFunc(GL_LEQUAL);
-
   ImGui::Render();
 }
 
@@ -471,11 +469,6 @@ int main(int, char **) {
 
   glewInit();
 
-  // Demo init
-  // if (demoApp == nullptr)
-  //  return EXIT_FAILURE;
-  // demoApplication = demoApp;
-
   // callbacks
   glfwSetKeyCallback(window, glfwKeyCallback);
   glfwSetCharModsCallback(window, glfwCharModsCallback);
@@ -483,17 +476,15 @@ int main(int, char **) {
   glfwSetCursorPosCallback(window, glfwCursorPosCallback);
   glfwSetCursorEnterCallback(window, glfwCursorEnterCallback);
   glfwSetScrollCallback(window, glfwScrollCallback);
-  glfwSetDropCallback(window, glfwDropCallback);
-  // glfwSetWindowRefreshCallback(window, glfwWindowRefreshCallback);
+  //glfwSetWindowRefreshCallback(window, glfwWindowRefreshCallback);
   glfwSetWindowFocusCallback(window, glfwWindowFocusCallback);
   glfwSetWindowSizeCallback(window, glfwWindowSizeCallback);
+
+  init_imgui();
 
   // more options
   glfwMakeContextCurrent(window);
   glfwSwapInterval(1);
-
-  // demoApplication->myinit();
-  InitImGui();
 
   // bool show_test_window = true;
   // bool show_another_window = false;
@@ -502,7 +493,7 @@ int main(int, char **) {
     // ImGuiIO &io = ImGui::GetIO();
     mousePressed[0] = mousePressed[1] = false;
     glfwPollEvents();
-    UpdateImGui();
+    update_imgui(window);
 
     // TODO: realtime step
     world_step(world, 1.0 / 60, 10, 1.0 / 600);
@@ -519,8 +510,6 @@ int main(int, char **) {
       // if (ImGui::Button("Test Window"))
       //  show_test_window ^= 1;
       // if (ImGui::Button("Another Window")) show_another_window ^= 1;
-      ImGui::Text("%.3f ms/frame (%.1f FPS)",
-                  1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
     }
 
     // 2. Show another simple window, this time using an explicit Begin/End pair

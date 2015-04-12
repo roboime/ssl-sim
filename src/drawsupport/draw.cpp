@@ -18,6 +18,11 @@
 #include "glutils.h"
 #include "colors.h"
 
+// Utils
+template <typename T> constexpr T RAD(T D) { return M_PI * D / 180.; }
+template <typename T> constexpr T DEG(T R) { return 180. * R / M_PI; }
+template <typename T> constexpr T SQ(T X) { return X * X; }
+
 static int debug_mode{};
 void draw_set_debug_mode(int mode) { debug_mode = mode; }
 
@@ -83,7 +88,8 @@ btScalar screen_height{0};
 btScalar screen_x{0};
 btScalar screen_y{0};
 bool screen_active{false};
-int screen_drag{0};
+bool screen_drag{false};
+int screen_button{0};
 
 btVector3 get_ray_to(btScalar x, btScalar y);
 btVector3 get_plane_from_cam(const btVector3 ray);
@@ -93,11 +99,30 @@ void draw_set_screen_size(int width, int height) {
   screen_height = height;
 }
 void draw_set_screen_pos(double x, double y) {
-  screen_x = x;
-  screen_y = y;
+  constexpr double MIN_DRAG_MOVE_2{3.0};
+  if (screen_button && !screen_drag) {
+    if (SQ(screen_x - x) + SQ(screen_y - y) > MIN_DRAG_MOVE_2) {
+      screen_drag = true;
+      screen_x = x;
+      screen_y = y;
+    }
+  } else {
+    screen_x = x;
+    screen_y = y;
+  }
 }
-void draw_set_screen_active(bool active) { screen_active = active; }
-void draw_set_screen_drag(int button) { screen_drag = button; }
+void draw_set_screen_active(bool active) {
+  screen_active = active;
+  if (!active) {
+    screen_drag = false;
+    screen_button = 0;
+  }
+}
+void draw_set_screen_button(int button) {
+  screen_button = button;
+  if (!button)
+    screen_drag = false;
+}
 
 #if 0
 btScalar cam_ele{30.0};
@@ -121,13 +146,10 @@ btVector3 plane_left{};
 static const btVector3 UP{0, 0, 1};
 static const btVector3 FWD{0, 1, 0};
 constexpr btScalar FNEAR{0.001};
-constexpr btScalar FFAR{10'000.0};
+constexpr btScalar FFAR{20.0};
 constexpr btScalar ROTSTEP{1};      // degrees
 constexpr btScalar WALKSTEP{0.050}; // meters
 constexpr btScalar ZOOMSTEP{0.050}; // meters
-
-template <typename T> constexpr T RAD(T D) { return M_PI * D / 180.; }
-template <typename T> constexpr T DEG(T R) { return 180. * R / M_PI; }
 
 void draw_update_camera(void) {
   if (screen_width == 0 && screen_width == 0)
@@ -333,12 +355,15 @@ void draw_screen_pos(void) {
   // plane_pos[2]);
 
   float r;
-  if (screen_drag) {
-    glColor4f(1.0, 0.0, 1.0, 0.5);
+  if (screen_button) {
     r = 0.100;
   } else {
+    r = 0.120;
+  }
+  if (screen_drag) {
+    glColor4f(1.0, 0.0, 1.0, 0.5);
+  } else {
     glColor4f(1.0, 1.0, 1.0, 0.4);
-    r = 0.110;
   }
 
   glEnable(GL_BLEND);
@@ -371,9 +396,6 @@ void draw_screen_pos(void) {
 }
 
 void draw_physics_world(World *world) {
-  draw_update_camera();
-  draw_field(*world_get_field(world));
-
   glClear(GL_STENCIL_BUFFER_BIT);
   glEnable(GL_CULL_FACE);
   draw_physics_world_pass(world, 0);
@@ -426,7 +448,14 @@ void draw_physics_world(World *world) {
     draw_screen_pos();
 }
 
+void draw_world(struct World *world) {
+  draw_update_camera();
+  draw_field(*world_get_field(world));
+  draw_physics_world(world);
+}
+
 btVector3 get_ray_to(btScalar x, btScalar y) {
+  // TODO: understand this function (ported from bullet demo) and make it simpler
   btScalar top{1.0};
   btScalar bottom{-1.0};
   btScalar near_plane{1.0};
