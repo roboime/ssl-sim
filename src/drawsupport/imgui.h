@@ -1367,10 +1367,10 @@ struct ImDrawList {
                                                    // function instead of
                                                    // rendering triangles.
   IMGUI_API void AddDrawCmd(); // This is useful if you need to forcefully
-                               // create a new draw call (to allow for dependent
-                               // rendering / blending). Otherwise primitives
-                               // are merged into the same draw-call as much as
-                               // possible
+  // create a new draw call (to allow for dependent
+  // rendering / blending). Otherwise primitives
+  // are merged into the same draw-call as much as
+  // possible
 
   // Internal helpers
   IMGUI_API void ReserveVertices(unsigned int vtx_count);

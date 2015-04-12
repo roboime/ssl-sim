@@ -1,0 +1,43 @@
+/*
+ * This file is part of the ssl-sim project.
+ *
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ */
+
+#ifndef FIELD_H
+#define FIELD_H
+#ifdef __cplusplus
+extern "C" {
+#endif
+// -----------------------------------------------------------------------------
+
+#include "vector.h"
+
+struct FieldGeometry {
+  Float line_width;
+  Float field_length;
+  Float field_width;
+  Float boundary_width;
+  Float referee_width;
+  Float goal_width;
+  Float goal_depth;
+  Float goal_wall_width;
+  Float center_circle_radius;
+  Float defense_radius;
+  Float defense_stretch;
+  Float free_kick_from_defense_dist;
+  Float penalty_spot_from_field_line_dist;
+  Float penalty_line_from_spot_dist;
+};
+
+extern const struct FieldGeometry FIELD_2014_SINGLE;
+extern const struct FieldGeometry FIELD_2014_DOUBLE;
+extern const struct FieldGeometry FIELD_2015;
+
+// -----------------------------------------------------------------------------
+#ifdef __cplusplus
+}
+#endif
+#endif

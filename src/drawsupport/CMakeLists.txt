@@ -7,13 +7,15 @@ pkg_search_module(GLFW REQUIRED glfw3)
 include_directories(${GLFW_INCLUDE_DIRS})
 include_directories(.)
 
-add_library(DrawSupport
+add_library(drawsupport
     GL_ShapeDrawer.cpp
     GL_ShapeDrawer.h
     DemoApplication.cpp
     DemoApplication.h
     glfwstuff.cpp
     glfwstuff.h
+    draw.cpp
+    draw.h
 
     # ImGui
     imconfig.h
@@ -24,7 +26,7 @@ add_library(DrawSupport
     stb_truetype.h
 )
 
-target_link_libraries(DrawSupport
+target_link_libraries(drawsupport
     ${BULLET_DYNAMICS_LIBRARY}
     ${BULLET_COLLISION_LIBRARY}
     ${BULLET_MATH_LIBRARY}

@@ -275,7 +275,9 @@ void GL_ShapeDrawer::drawSphere(btScalar radius, int lats, int longs) {
   }
 }
 
-void GL_ShapeDrawer::drawCylinder(float radius, float halfHeight, int upAxis) {
+// void GL_ShapeDrawer::drawCylinder(float radius, float halfHeight, int upAxis)
+// {
+void GL_ShapeDrawer::drawCylinder(float, float halfHeight, int upAxis) {
 
   glPushMatrix();
   switch (upAxis) {
@@ -537,7 +539,7 @@ void GL_ShapeDrawer::drawOpenGL(btScalar *m, const btCollisionShape *shape,
             static_cast<const btSphereShape *>(shape);
         float radius = sphereShape->getMargin(); // radius doesn't include the
                                                  // margin, so draw with margin
-        drawSphere(radius, 10, 10);
+        drawSphere(radius, 30, 30);
         useWireframeFallback = false;
         break;
       }
@@ -612,6 +614,7 @@ void GL_ShapeDrawer::drawOpenGL(btScalar *m, const btCollisionShape *shape,
           }
 #endif
 
+#if 0
       case STATIC_PLANE_PROXYTYPE: {
         const btStaticPlaneShape *staticPlaneShape =
             static_cast<const btStaticPlaneShape *>(shape);
@@ -634,23 +637,20 @@ void GL_ShapeDrawer::drawOpenGL(btScalar *m, const btCollisionShape *shape,
 
         break;
       }
+#endif
 
-      /*
-         case CYLINDER_SHAPE_PROXYTYPE:
-         {
-         const btCylinderShape* cylinder = static_cast<const
-         btCylinderShape*>(shape);
-         int upAxis = cylinder->getUpAxis();
+      case CYLINDER_SHAPE_PROXYTYPE: {
+        const btCylinderShape *cylinder =
+            static_cast<const btCylinderShape *>(shape);
+        int upAxis = cylinder->getUpAxis();
 
+        float radius = cylinder->getRadius();
+        float halfHeight = cylinder->getHalfExtentsWithMargin()[upAxis];
 
-         float radius = cylinder->getRadius();
-         float halfHeight = cylinder->getHalfExtentsWithMargin()[upAxis];
+        drawCylinder(radius, halfHeight, upAxis);
 
-         drawCylinder(radius,halfHeight,upAxis);
-
-         break;
-         }
-         */
+        break;
+      }
 
       case MULTI_SPHERE_SHAPE_PROXYTYPE: {
         const btMultiSphereShape *multiSphereShape =

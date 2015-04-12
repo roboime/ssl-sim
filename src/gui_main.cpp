@@ -6,45 +6,64 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
+#include <signal.h>
+#include <stdlib.h>
 #include <stdio.h>
+#include <stdbool.h>
+#include <chrono>
+#include <thread>
 
 #define GLEW_STATIC
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 
 #include "imgui.h"
-#include "DemoApplication.h"
+#include "sslsim.h"
+#include "draw.h"
+#include "colors.h"
 
 static void glfwErrorCallback(int error, const char *description) {
   fprintf(stderr, "GLFW ERROR %i: %s", error, description);
 }
 
 // glfw is C code, this global demoApplication links glfw to the C++ demo
-static DemoApplication *demoApplication = nullptr;
+// static DemoApplication *demoApplication = nullptr;
+static World *world;
 static GLFWwindow *window = nullptr;
 static bool mousePressed[2] = {false, false};
 
-static void glfwMouseButtonCallback(GLFWwindow *window, int button, int action,
-                                    int mods) {
-  double _x, _y;
-  glfwGetCursorPos(window, &_x, &_y);
-  int x(_x), y(_y);
-
+// static void glfwMouseButtonCallback(GLFWwindow *window, int button, int
+// action, int mods) {
+static void glfwMouseButtonCallback(GLFWwindow *, int button, int action, int) {
   // Application
-  demoApplication->m_modifierKeys = mods;
-  demoApplication->mouseFunc(button, action, x, y);
+  // double _x, _y;
+  // glfwGetCursorPos(window, &_x, &_y);
+  // int x(_x), y(_y);
+  // demoApplication->m_modifierKeys = mods;
+  // demoApplication->mouseFunc(button, action, x, y);
 
   // ImGui
   if (action == GLFW_PRESS && button >= 0 && button < 2)
     mousePressed[button] = true;
+
+  if (!ImGui::IsMouseHoveringAnyWindow() && action == GLFW_PRESS)
+    draw_set_screen_drag(1 + button);
+  if (action == GLFW_RELEASE)
+    draw_set_screen_drag(0);
 }
 
-static void glfwCursorPosCallback(GLFWwindow *, double xoffset,
-                                  double yoffset) {
-  demoApplication->mouseMotionFunc(xoffset, yoffset);
+// static void glfwCursorPosCallback(GLFWwindow *window, double xoffset, double
+// yoffset) {
+static void glfwCursorPosCallback(GLFWwindow *, double xpos, double ypos) {
+  // demoApplication->mouseMotionFunc(xoffset, yoffset);
+  draw_set_screen_pos(xpos, ypos);
 }
 
-static void glfwCursorEnterCallback(GLFWwindow *, int) {}
+static void glfwCursorEnterCallback(GLFWwindow *, int entered) {
+  draw_set_screen_active(entered == GL_TRUE);
+  if (entered != GL_TRUE)
+    draw_set_screen_drag(0);
+}
 
 static void glfwScrollCallback(GLFWwindow *, double, double yoffset) {
   // Application
@@ -58,37 +77,92 @@ static void glfwScrollCallback(GLFWwindow *, double, double yoffset) {
 
 static void glfwKeyCallback(GLFWwindow *window, int key, int, int action,
                             int mods) {
-  double _x, _y;
-  glfwGetCursorPos(window, &_x, &_y);
-  int x(_x), y(_y);
 
   // Application
-  demoApplication->m_modifierKeys = mods;
-  demoApplication->specialKeyboard(key, x, y);
-
-  // ImGui
-  ImGuiIO &io = ImGui::GetIO();
-  if (action == GLFW_PRESS)
-    io.KeysDown[key] = true;
-  if (action == GLFW_RELEASE)
-    io.KeysDown[key] = false;
-  io.KeyCtrl = (mods & GLFW_MOD_CONTROL) != 0;
-  io.KeyShift = (mods & GLFW_MOD_SHIFT) != 0;
+  // double _x, _y;
+  // glfwGetCursorPos(window, &_x, &_y);
+  // int x(_x), y(_y);
+  // demoApplication->m_modifierKeys = mods;
+  // demoApplication->specialKeyboard(key, x, y);
 
   // Custom
-  if (key == GLFW_KEY_ESCAPE && action == GLFW_RELEASE)
+  if (key == GLFW_KEY_ESCAPE && action == GLFW_RELEASE) {
     glfwSetWindowShouldClose(window, 1);
+    return;
+  }
+
+  // if (ImGui::GetWindowIsFocused() && ImGui::IsAnyItemActive()) {
+  if (ImGui::IsAnyItemActive()) {
+
+    // ImGui
+    ImGuiIO &io = ImGui::GetIO();
+    if (action == GLFW_PRESS)
+      io.KeysDown[key] = true;
+    if (action == GLFW_RELEASE)
+      io.KeysDown[key] = false;
+    io.KeyCtrl = (mods & GLFW_MOD_CONTROL) != 0;
+    io.KeyShift = (mods & GLFW_MOD_SHIFT) != 0;
+
+  } else if (action & (GLFW_PRESS | GLFW_REPEAT)) {
+
+    // Application
+    switch (key) {
+    case GLFW_KEY_W:
+      draw_walk_front();
+      break;
+    case GLFW_KEY_A:
+      draw_walk_left();
+      break;
+    case GLFW_KEY_S:
+      draw_walk_back();
+      break;
+    case GLFW_KEY_D:
+      draw_walk_right();
+      break;
+    case GLFW_KEY_UP:
+      draw_rot_up();
+      break;
+    case GLFW_KEY_LEFT:
+      draw_rot_left();
+      break;
+    case GLFW_KEY_DOWN:
+      draw_rot_down();
+      break;
+    case GLFW_KEY_RIGHT:
+      draw_rot_right();
+      break;
+    case GLFW_KEY_E:
+    case GLFW_KEY_EQUAL: // which is also +
+      draw_zoom_in();
+      break;
+    case GLFW_KEY_Q:
+    case GLFW_KEY_MINUS:
+      draw_zoom_out();
+      break;
+#if 0
+    case GLFW_KEY_R: {
+      static int r{0};
+      world_add_robot(world, r++, TEAM_BLUE);
+    } break;
+    case GLFW_KEY_F: {
+      static int r{0};
+      world_add_robot(world, r++, TEAM_YELLOW);
+    } break;
+#endif
+    }
+  }
 }
 
-static void glfwCharModsCallback(GLFWwindow *window, unsigned int codepoint,
-                                 int mods) {
-  double _x, _y;
-  glfwGetCursorPos(window, &_x, &_y);
-  int x(_x), y(_y);
-
+// static void glfwCharModsCallback(GLFWwindow *window, unsigned int codepoint,
+// int mods) {
+static void glfwCharModsCallback(GLFWwindow *, unsigned int codepoint, int) {
   // Application
-  demoApplication->m_modifierKeys = mods;
-  demoApplication->keyboardCallback(codepoint, x, y);
+  // double _x, _y;
+  // glfwGetCursorPos(window, &_x, &_y);
+  // int x(_x), y(_y);
+  // demoApplication->m_modifierKeys = mods;
+  // demoApplication->keyboardCallback(codepoint, x, y);
+
   // switch (action) {
   //  case GLFW_PRESS:
   //    demoApplication->keyboardCallback(key, x, y);
@@ -121,6 +195,23 @@ static void UpdateImGui();
 static bool isActive = false;
 static void glfwWindowFocusCallback(GLFWwindow *, int focus) {
   isActive = (focus == GL_TRUE);
+  if (focus != GL_TRUE)
+    draw_set_screen_drag(0);
+}
+
+inline void gui_sync(void) {
+  if (!isActive) // if running in background idle avoid high cpu usage,
+    // empirical parameter
+    // std::this_thread::sleep_for(std::chrono::milliseconds(96));
+    std::this_thread::sleep_for(std::chrono::milliseconds(15));
+}
+
+static void glfwWindowSizeCallback(GLFWwindow *, int width, int height) {
+  draw_set_screen_size(width, height);
+  // glfwPollEvents();
+  UpdateImGui();
+  render();
+  glfwSwapBuffers(window);
 }
 
 // This is the main rendering function that you have to implement and provide to
@@ -286,7 +377,7 @@ static void UpdateImGui() {
       (float)display_w, (float)
       display_h); // Display size, in pixels. For clamping windows positions.
 
-  demoApplication->reshape(display_w, display_h);
+  // demoApplication->reshape(display_w, display_h);
 
   // Setup time step
   static double time = 0.0f;
@@ -318,7 +409,7 @@ static void UpdateImGui() {
   ImGui::NewFrame();
 }
 
-static ImVec4 clear_col = ImColor(114, 144, 154);
+static ImVec4 clear_col = ImColor(DARK_GREEN[0], DARK_GREEN[1], DARK_GREEN[2]);
 void render() {
   ImGuiIO &io = ImGui::GetIO();
   glViewport(0, 0, (int)io.DisplaySize.x, (int)io.DisplaySize.y);
@@ -326,7 +417,8 @@ void render() {
   // glClear(GL_COLOR_BUFFER_BIT);
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-  demoApplication->moveAndDisplay();
+  // demoApplication->moveAndDisplay();
+  draw_physics_world(world);
 
   glMatrixMode(GL_TEXTURE);
   glLoadIdentity();
@@ -341,9 +433,28 @@ void render() {
   ImGui::Render();
 }
 
-// Application code
-int glfwmain(int, char **, int width, int height, const char *title,
-             DemoApplication *demoApp) {
+void sigint_handler(int) {
+  fprintf(stderr, "\rCtrl+C pressed, closing...\n");
+  glfwSetWindowShouldClose(window, 1);
+}
+
+int main(int, char **) {
+
+  // Handle SIGINT (Ctrl+C)
+  struct sigaction sigIntHandler;
+  sigIntHandler.sa_handler = sigint_handler;
+  sigemptyset(&sigIntHandler.sa_mask);
+  sigIntHandler.sa_flags = 0;
+  sigaction(SIGINT, &sigIntHandler, NULL);
+
+  // Create a world
+  world = new_world(&FIELD_2015);
+
+  // int width, int height, const char *title,
+  // DemoApplication *demoApp) {
+  const int w{987}, h{610};
+  draw_set_screen_size(w, h);
+  const char *title = "Small Size League Simulator by RoboIME";
 
   if (!glfwInit())
     return EXIT_FAILURE;
@@ -352,7 +463,7 @@ int glfwmain(int, char **, int width, int height, const char *title,
   glfwSetErrorCallback(glfwErrorCallback);
   glfwWindowHint(GLFW_SAMPLES, 4);
 
-  window = glfwCreateWindow(width, height, title, NULL, NULL);
+  window = glfwCreateWindow(w, h, title, NULL, NULL);
   if (window == nullptr) {
     glfwTerminate();
     return EXIT_FAILURE;
@@ -361,9 +472,9 @@ int glfwmain(int, char **, int width, int height, const char *title,
   glewInit();
 
   // Demo init
-  if (demoApp == nullptr)
-    return EXIT_FAILURE;
-  demoApplication = demoApp;
+  // if (demoApp == nullptr)
+  //  return EXIT_FAILURE;
+  // demoApplication = demoApp;
 
   // callbacks
   glfwSetKeyCallback(window, glfwKeyCallback);
@@ -375,6 +486,7 @@ int glfwmain(int, char **, int width, int height, const char *title,
   glfwSetDropCallback(window, glfwDropCallback);
   // glfwSetWindowRefreshCallback(window, glfwWindowRefreshCallback);
   glfwSetWindowFocusCallback(window, glfwWindowFocusCallback);
+  glfwSetWindowSizeCallback(window, glfwWindowSizeCallback);
 
   // more options
   glfwMakeContextCurrent(window);
@@ -383,7 +495,7 @@ int glfwmain(int, char **, int width, int height, const char *title,
   // demoApplication->myinit();
   InitImGui();
 
-  bool show_test_window = true;
+  // bool show_test_window = true;
   // bool show_another_window = false;
 
   while (!glfwWindowShouldClose(window)) {
@@ -391,6 +503,10 @@ int glfwmain(int, char **, int width, int height, const char *title,
     mousePressed[0] = mousePressed[1] = false;
     glfwPollEvents();
     UpdateImGui();
+
+    // TODO: realtime step
+    world_step(world, 1.0 / 60, 10, 1.0 / 600);
+    // world_step(world, 1.0 / 300, 10, 1.0 / 600);
 
     // 1. Show a simple window
     // Tip: if we don't call ImGui::Begin()/ImGui::End() the widgets appears in
@@ -400,10 +516,10 @@ int glfwmain(int, char **, int width, int height, const char *title,
       // ImGui::Text("Hello, world!");
       // ImGui::SliderFloat("float", &f, 0.0f, 1.0f);
       // ImGui::ColorEdit3("clear color", (float*)&clear_col);
-      if (ImGui::Button("Test Window"))
-        show_test_window ^= 1;
+      // if (ImGui::Button("Test Window"))
+      //  show_test_window ^= 1;
       // if (ImGui::Button("Another Window")) show_another_window ^= 1;
-      ImGui::Text("Application average %.3f ms/frame (%.1f FPS)",
+      ImGui::Text("%.3f ms/frame (%.1f FPS)",
                   1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
     }
 
@@ -416,14 +532,16 @@ int glfwmain(int, char **, int width, int height, const char *title,
 
     // 3. Show the ImGui test window. Most of the sample code is in
     // ImGui::ShowTestWindow();
-    if (show_test_window) {
-      ImGui::SetNextWindowPos(ImVec2(650, 20), ImGuiSetCondition_FirstUseEver);
-      ImGui::ShowTestWindow(&show_test_window);
-    }
+    // if (show_test_window) {
+    //  ImGui::SetNextWindowPos(ImVec2(650, 20),
+    //  ImGuiSetCondition_FirstUseEver);
+    //  ImGui::ShowTestWindow(&show_test_window);
+    //}
 
     // Rendering
     render();
     glfwSwapBuffers(window);
+    gui_sync();
   }
 
   // Cleanup

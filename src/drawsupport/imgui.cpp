@@ -6400,9 +6400,9 @@ bool ImGui::InputText(const char *label, char *buf, size_t buf_size,
       io.ImeSetInputScreenPosFn(
           (int)cursor_pos.x - 1,
           (int)(cursor_pos.y - window->FontSize())); // -1 x offset so that
-                                                     // Windows IME can cover
-                                                     // our cursor. Bit of an
-                                                     // extra nicety.
+    // Windows IME can cover
+    // our cursor. Bit of an
+    // extra nicety.
 
     edit_state.InputCursorScreenPos = cursor_pos;
   }
@@ -6555,7 +6555,8 @@ bool ImGui::Combo(const char *label, int *current_item,
               style.FrameRounding);
   RenderFrame(ImVec2(frame_bb.Max.x - arrow_size, frame_bb.Min.y), frame_bb.Max,
               window->Color(hovered ? ImGuiCol_ButtonHovered : ImGuiCol_Button),
-              true, style.FrameRounding); // FIXME-ROUNDING
+              true,
+              style.FrameRounding); // FIXME-ROUNDING
   RenderCollapseTriangle(ImVec2(frame_bb.Max.x - arrow_size, frame_bb.Min.y) +
                              style.FramePadding,
                          true);

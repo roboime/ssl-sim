@@ -7,24 +7,29 @@ set(DESCRIPTION "Small Size League Simulator (Experimental)")
 option(BUILD_CLI "Build command line interface" ON)
 option(BUILD_GUI "Build graphical user interface (requires OpenGL+GLFW)" ON)
 
-
-add_definitions("-std=c++11")
-if("${CMAKE_GENERATOR}" STREQUAL "Ninja" AND "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
-  add_definitions("-Xclang -fcolor-diagnostics")
-endif()
+# Super strict warnings =)
+set(CMAKE_CXX_FLAGS "-Wall -Wextra -pedantic -pedantic-errors ${CMAKE_CXX_FLAGS}")
 
 include(${PROJECT_SOURCE_DIR}/cmake/Utils.cmake)
 standard_config()
 #standard_paths(${PROJECT_SOURCE_DIR} bin lib)
 standard_paths(${PROJECT_BINARY_DIR} bin lib)
 
+require_cxx14()
+require_c11()
+
+# enable clang-color with ninja
+if("${CMAKE_GENERATOR}" STREQUAL "Ninja" AND "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+    add_definitions("-Xclang -fcolor-diagnostics")
+endif()
+
 # Bullet
 find_package(Bullet REQUIRED)
-include_directories(${BULLET_INCLUDE_DIR})
+include_directories(SYSTEM ${BULLET_INCLUDE_DIR})
 
 # Protobuf
 find_package(Protobuf REQUIRED)
-include_directories(${PROTOBUF_INCLUDE_DIRS})
+include_directories(SYSTEM ${PROTOBUF_INCLUDE_DIRS})
 
 protobuf_generate_cpp(PROTO_CPP PROTO_H
     protos/messages_robocup_ssl_detection.proto
@@ -36,31 +41,45 @@ protobuf_generate_cpp(PROTO_CPP PROTO_H
     protos/grSim_Packet.proto
 )
 
-add_library(ssl-sim
-    src/sslsim.cpp
+add_library(sslsim
+    src/vector.h
+    src/team.h
+    src/field.h
+    src/field.c
+    src/world.h
+    src/robot.h
+    src/ball.h
     src/sslsim.h
-    ${PROTO_CPP}
-    ${PROTO_H}
+    src/sslsim.cpp
 )
 
-target_link_libraries(ssl-sim
-    ${BULLET_LIBRARIES}
-    ${PROTOBUF_LIBRARIES}
-)
+target_link_libraries(sslsim ${BULLET_LIBRARIES})
 
 if(BUILD_CLI)
-    add_executable(ssl-sim-cli src/main-cli.cpp)
-    target_link_libraries(ssl-sim-cli ssl-sim)
+    set(cli_app ssl-sim-cli)
+    add_executable(${cli_app} src/main.c)
+    target_link_libraries(${cli_app} sslsim)
 endif()
 
 if(BUILD_GUI)
-    add_executable(ssl-sim-gui src/main-gui.cpp)
-
     # OpenGL Helper
     add_subdirectory(src/drawsupport)
     include_directories(src/drawsupport)
 
-    target_link_libraries(ssl-sim-gui ssl-sim DrawSupport)
+    set(gui_app ssl-sim-gui)
+    add_executable(${gui_app}
+        #src/ugly_test.h
+        #src/ugly_test.cpp
+        #src/main-gui.cpp
+        src/gui_main.cpp
+        src/net.h
+        src/net.cpp
+        ${PROTO_CPP}
+        ${PROTO_H}
+    )
+
+    target_link_libraries(${gui_app} sslsim drawsupport)
+    target_link_libraries(${gui_app} ${PROTOBUF_LIBRARIES})
 endif()
 
 # vim: et sw=4 ts=3 sts=4

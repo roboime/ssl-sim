@@ -6,7 +6,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-#include "sslsim.h"
+#include "ugly_test.h"
 #include "glfwstuff.h"
 #include "btBulletDynamicsCommon.h"
 

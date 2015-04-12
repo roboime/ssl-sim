@@ -115,7 +115,7 @@ public:
 
   virtual void initPhysics() = 0;
 
-  virtual void setDrawClusters(bool drawClusters) {}
+  virtual void setDrawClusters(bool) {}
   void overrideGLShapeDrawer(GL_ShapeDrawer *shapeDrawer);
   void setOrthographicProjection();
   void resetPerspectiveProjection();
@@ -169,9 +169,9 @@ public:
 
   /// callback methods by glut
   virtual void keyboardCallback(unsigned char key, int x, int y);
-  virtual void keyboardUpCallback(unsigned char key, int x, int y) {}
+  virtual void keyboardUpCallback(unsigned char, int, int) {}
   virtual void specialKeyboard(int key, int x, int y);
-  virtual void specialKeyboardUp(int key, int x, int y) {}
+  virtual void specialKeyboardUp(int, int, int) {}
   virtual void reshape(int w, int h);
   virtual void mouseFunc(int button, int state, int x, int y);
   virtual void mouseMotionFunc(int x, int y);

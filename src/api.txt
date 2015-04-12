@@ -1,0 +1,35 @@
+
+
+- World: abstrai ambiente de simulação
+  - dimensões do campo
+  - step na física
+- Robot/Ball?
+- Referee: controla um mundo
+  - precisa de referência para World
+  - placar do jogo
+  - auto-posicionamento da bola em saídas
+  - human-like delay
+
+
+
+```cpp
+struct World {
+// ...
+}
+
+struct Robot {
+  World &world;
+  int robotid;
+
+// ...
+  metdx();
+  metdy();
+}
+
+
+```
+
+
+
+
+# vim: filetype=markdown
