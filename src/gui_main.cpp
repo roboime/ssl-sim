@@ -22,7 +22,9 @@
 #include "draw.h"
 #include "colors.h"
 
-static void glfwErrorCallback(int error, const char *description) {
+#include <btBulletDynamicsCommon.h>
+
+static void error_callback(int error, const char *description) {
   fprintf(stderr, "GLFW ERROR %i: %s", error, description);
 }
 
@@ -32,9 +34,20 @@ static World *world;
 static GLFWwindow *window = nullptr;
 static bool mousePressed[2] = {false, false};
 
-// static void glfwMouseButtonCallback(GLFWwindow *window, int button, int
+bool screen_active{false};
+bool screen_drag{false};
+int screen_button{0};
+void set_screen_button(int button) {
+  screen_button = button;
+  if (!button)
+    screen_drag = false;
+}
+template <typename T> constexpr T SQ(T X) { return X * X; }
+
+// static void mouse_button_callback(GLFWwindow *window, int button, int
 // action, int mods) {
-static void glfwMouseButtonCallback(GLFWwindow *, int button, int action, int mods) {
+static void mouse_button_callback(GLFWwindow *, int button, int action,
+                                  int mods) {
   // Application
   // double _x, _y;
   // glfwGetCursorPos(window, &_x, &_y);
@@ -47,23 +60,42 @@ static void glfwMouseButtonCallback(GLFWwindow *, int button, int action, int mo
     mousePressed[button] = true;
 
   if (!ImGui::IsMouseHoveringAnyWindow() && action == GLFW_PRESS)
-    draw_set_screen_button((1 + button) | (mods << 4));
-  if (action == GLFW_RELEASE)
-    draw_set_screen_button(0);
+    set_screen_button((1 + button) | (mods << 4));
+
+  if (action == GLFW_RELEASE) {
+    if (screen_active && mods & GLFW_MOD_ALT)
+      ball_set_vec(world_get_ball(world),
+                   {projected_mouse_x, projected_mouse_y});
+    set_screen_button(0);
+  }
 }
 
-// static void glfwCursorPosCallback(GLFWwindow *window, double xoffset, double
+// static void cursor_pos_callback(GLFWwindow *window, double xoffset, double
 // yoffset) {
-static void glfwCursorPosCallback(GLFWwindow *, double xpos, double ypos) {
+static void cursor_pos_callback(GLFWwindow *, double xpos, double ypos) {
   // demoApplication->mouseMotionFunc(xoffset, yoffset);
-  draw_set_screen_pos(xpos, ypos);
+  constexpr double MIN_DRAG_MOVE_2{3.0};
+  if (screen_button && !screen_drag) {
+    if (SQ(draw_screen_x - xpos) + SQ(draw_screen_y - ypos) > MIN_DRAG_MOVE_2) {
+      screen_drag = true;
+      draw_screen_x = xpos;
+      draw_screen_y = ypos;
+    }
+  } else {
+    draw_screen_x = xpos;
+    draw_screen_y = ypos;
+  }
 }
 
-static void glfwCursorEnterCallback(GLFWwindow *, int entered) {
-  draw_set_screen_active(entered == GL_TRUE);
+static void cursor_enter_callback(GLFWwindow *, int entered) {
+  screen_active = entered == GL_TRUE;
+  if (!screen_active) {
+    screen_drag = false;
+    screen_button = 0;
+  }
 }
 
-static void glfwScrollCallback(GLFWwindow *, double, double yoffset) {
+static void scroll_callback(GLFWwindow *, double, double yoffset) {
   // Application
   // ??
 
@@ -73,8 +105,8 @@ static void glfwScrollCallback(GLFWwindow *, double, double yoffset) {
   io.MouseWheel += (float)yoffset;
 }
 
-static void glfwKeyCallback(GLFWwindow *window, int key, int, int action,
-                            int mods) {
+static void key_callback(GLFWwindow *window, int key, int, int action,
+                         int mods) {
 
   // Application
   // double _x, _y;
@@ -137,7 +169,7 @@ static void glfwKeyCallback(GLFWwindow *window, int key, int, int action,
     case GLFW_KEY_MINUS:
       draw_zoom_out();
       break;
-#if 0
+#if 1
     case GLFW_KEY_R: {
       static int r{0};
       world_add_robot(world, r++, TEAM_BLUE);
@@ -151,9 +183,9 @@ static void glfwKeyCallback(GLFWwindow *window, int key, int, int action,
   }
 }
 
-// static void glfwCharModsCallback(GLFWwindow *window, unsigned int codepoint,
+// static void char_mods_callback(GLFWwindow *window, unsigned int codepoint,
 // int mods) {
-static void glfwCharModsCallback(GLFWwindow *, unsigned int codepoint, int) {
+static void char_mods_callback(GLFWwindow *, unsigned int codepoint, int) {
   // Application
   // double _x, _y;
   // glfwGetCursorPos(window, &_x, &_y);
@@ -182,7 +214,7 @@ static void render();
 static void update_imgui(GLFWwindow *window);
 
 #if 0
-static void glfwWindowRefreshCallback(GLFWwindow *window) {
+static void window_refresh_callback(GLFWwindow *window) {
   // FIXME: this is probably broken, some more thinking has to go into this
   update_imgui(window);
   render();
@@ -190,23 +222,24 @@ static void glfwWindowRefreshCallback(GLFWwindow *window) {
 }
 #endif
 
-static bool isActive = false;
-static void glfwWindowFocusCallback(GLFWwindow *, int focus) {
-  isActive = (focus == GL_TRUE);
+static bool is_active = false;
+static void window_focus_callback(GLFWwindow *, int focus) {
+  is_active = (focus == GL_TRUE);
   if (focus != GL_TRUE)
-    draw_set_screen_button(0);
+    set_screen_button(0);
 }
 
 inline void gui_sync(void) {
-  if (!isActive) // if running in background idle avoid high cpu usage,
+  if (!is_active) // if running in background idle avoid high cpu usage,
     // empirical parameter
     // std::this_thread::sleep_for(std::chrono::milliseconds(96));
     std::this_thread::sleep_for(std::chrono::milliseconds(15));
 }
 
-static void glfwWindowSizeCallback(GLFWwindow *window, int width, int height) {
-  draw_set_screen_size(width, height);
-  draw_set_screen_active(false);
+static void window_size_callback(GLFWwindow *window, int width, int height) {
+  draw_screen_width = width;
+  draw_screen_height = height;
+  screen_active = false;
   // glfwPollEvents();
   update_imgui(window);
   render();
@@ -219,7 +252,7 @@ static void glfwWindowSizeCallback(GLFWwindow *window, int width, int height) {
 // - in your Render function, try translating your projection matrix by
 // (0.5f,0.5f) or (0.375f,0.375f)
 static void imgui_renderdrawlists(ImDrawList **const cmd_lists,
-                                   int cmd_lists_count) {
+                                  int cmd_lists_count) {
   if (cmd_lists_count == 0)
     return;
 
@@ -407,17 +440,23 @@ static void update_imgui(GLFWwindow *window) {
   // Start the frame
   ImGui::NewFrame();
 
-  ImGui::Text("%.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+  ImGui::Text("%.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate,
+              ImGui::GetIO().Framerate);
 }
 
 void render() {
-  static ImVec4 clear_col = ImColor(DARK_GREEN[0], DARK_GREEN[1], DARK_GREEN[2]);
+  static ImVec4 clear_col =
+      ImColor(DARK_GREEN[0], DARK_GREEN[1], DARK_GREEN[2]);
   ImGuiIO &io = ImGui::GetIO();
   glViewport(0, 0, (int)io.DisplaySize.x, (int)io.DisplaySize.y);
   glClearColor(clear_col.x, clear_col.y, clear_col.z, clear_col.w);
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-  draw_world(world);
+  draw_world();
+  if (screen_active)
+    draw_mouse_projection(screen_button, screen_drag);
+  draw_debug();
+  draw_options_window();
 
   glMatrixMode(GL_TEXTURE);
   glLoadIdentity();
@@ -447,18 +486,20 @@ int main(int, char **) {
 
   // Create a world
   world = new_world(&FIELD_2015);
+  draw_init(world);
 
   // int width, int height, const char *title,
   // DemoApplication *demoApp) {
   const int w{987}, h{610};
-  draw_set_screen_size(w, h);
+  draw_screen_width = w;
+  draw_screen_height = h;
   const char *title = "Small Size League Simulator by RoboIME";
 
   if (!glfwInit())
     return EXIT_FAILURE;
 
   // GLFW init
-  glfwSetErrorCallback(glfwErrorCallback);
+  glfwSetErrorCallback(error_callback);
   glfwWindowHint(GLFW_SAMPLES, 4);
 
   window = glfwCreateWindow(w, h, title, NULL, NULL);
@@ -470,15 +511,15 @@ int main(int, char **) {
   glewInit();
 
   // callbacks
-  glfwSetKeyCallback(window, glfwKeyCallback);
-  glfwSetCharModsCallback(window, glfwCharModsCallback);
-  glfwSetMouseButtonCallback(window, glfwMouseButtonCallback);
-  glfwSetCursorPosCallback(window, glfwCursorPosCallback);
-  glfwSetCursorEnterCallback(window, glfwCursorEnterCallback);
-  glfwSetScrollCallback(window, glfwScrollCallback);
-  //glfwSetWindowRefreshCallback(window, glfwWindowRefreshCallback);
-  glfwSetWindowFocusCallback(window, glfwWindowFocusCallback);
-  glfwSetWindowSizeCallback(window, glfwWindowSizeCallback);
+  glfwSetKeyCallback(window, key_callback);
+  glfwSetCharModsCallback(window, char_mods_callback);
+  glfwSetMouseButtonCallback(window, mouse_button_callback);
+  glfwSetCursorPosCallback(window, cursor_pos_callback);
+  glfwSetCursorEnterCallback(window, cursor_enter_callback);
+  glfwSetScrollCallback(window, scroll_callback);
+  // glfwSetWindowRefreshCallback(window, window_refresh_callback);
+  glfwSetWindowFocusCallback(window, window_focus_callback);
+  glfwSetWindowSizeCallback(window, window_size_callback);
 
   init_imgui();
 

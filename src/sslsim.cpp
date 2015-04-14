@@ -46,8 +46,9 @@ struct Robot {
 
   // physics body
   btCylinderShapeZ shape{{ROBOT_DIAM / 2, ROBOT_DIAM / 2, ROBOT_HEIGHT / 2}};
+  // btSphereShape shape{BALL_DIAM / 2};
   btDefaultMotionState motion_state{
-      btTransform({0, 0, 0, 1}, {0, 0, ROBOT_HEIGHT + 0.001})};
+      btTransform({0, 0, 0, 1}, {0, 0, ROBOT_HEIGHT + 0.001 + 0.5})};
   const struct CI : public btRigidBodyCI {
     CI(btDefaultMotionState *s, btCollisionShape *h)
         : btRigidBodyCI(ROBOT_MASS, s, h, {0, 0, 0}) {
@@ -84,6 +85,7 @@ struct World {
   const FieldGeometry *const field;
   Ball ball{};
   btAlignedObjectArray<Robot> robots{};
+  btAlignedObjectArray<Ball> balls{};
 
   // TODO: findout what can be static, maybe?
 
@@ -156,9 +158,22 @@ Robot *world_get_robot(World *world, int index) {
 }
 
 void world_add_robot(World *world, int id, Team team) {
-  int pos = world->robots.size();
+#if 0
   world->robots.push_back({id, team});
-  world->dynamics.addRigidBody(&world->robots[pos].rigid_body);
+  int i = world->robots.size() - 1;
+  auto &robot = world->robots[i];
+  world->dynamics.addRigidBody(&world->robots[i].rigid_body);
+#endif
+#if 0
+  world->balls.push_back({});
+  int i = world->balls.size() - 1;
+  world->dynamics.addRigidBody(&world->balls[i].rigid_body);
+#endif
+  static Robot r;
+  world->dynamics.addRigidBody(&r.rigid_body);
+  // world->dynamics.addRigidBody(&robot.rigid_body);
+  // btTransform trans;
+  // robot.rigid_body.getMotionState()->getWorldTransform(trans);
   // TODO: robot position
 }
 
@@ -174,7 +189,9 @@ struct Vec3 ball_get_vec(struct Ball *ball) {
   return {orig.getX(), orig.getY(), orig.getZ()};
 }
 
-void ball_set_vec(struct Ball *ball, const struct Vec3 vec);
+void ball_set_vec(struct Ball *ball, const struct Vec2 vec) {
+  ball->motion_state = btTransform({0, 0, 0, 1}, {vec.x, vec.y, BALL_DIAM / 2});
+}
 
 struct Pos3 ball_get_pos(struct Ball *ball);
 void ball_set_pos(struct Ball *ball, const struct Pos3 pos);
@@ -187,10 +204,12 @@ int ball_is_touching_robot(struct Ball *ball, struct Robot *robot);
 struct Robot *ball_last_touching_robot(struct Ball *ball);
 
 /// fast squared speed (magnitude of velocity)
-Float ball_get_speed2(struct Robot *robot);
+Float ball_get_speed2(struct Ball *ball);
 
 /// fast squared speed (magnitude of velocity)
-Float ball_get_peak_speed2_from_last_kick(struct Robot *robot);
+Float ball_get_peak_speed2_from_last_kick(struct Ball *ball);
+
+btRigidBody *ball_bt_rigid_body(struct Ball *ball) { return &ball->rigid_body; }
 
 // robot.h impl
 int get_id(struct Robot *robot);

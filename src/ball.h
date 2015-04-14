@@ -16,7 +16,7 @@ extern "C" {
 #include "vector.h"
 
 struct Vec3 ball_get_vec(struct Ball *ball);
-void ball_set_vec(struct Ball *ball, const struct Vec3 vec);
+void ball_set_vec(struct Ball *ball, const struct Vec2 vec);
 
 struct Pos3 ball_get_pos(struct Ball *ball);
 void ball_set_pos(struct Ball *ball, const struct Pos3 pos);
@@ -32,10 +32,12 @@ int ball_is_touching_robot(struct Ball *ball, struct Robot *robot);
 struct Robot *ball_last_touching_robot(struct Ball *ball);
 
 /// fast squared speed (magnitude of velocity)
-Float ball_get_speed2(struct Robot *robot);
+Float ball_get_speed2(struct Ball *ball);
 
 /// fast squared speed (magnitude of velocity)
-Float ball_get_peak_speed2_from_last_kick(struct Robot *robot);
+Float ball_get_peak_speed2_from_last_kick(struct Ball *ball);
+
+struct btRigidBody *ball_bt_rigid_body(struct Ball *ball);
 
 // -----------------------------------------------------------------------------
 #ifdef __cplusplus

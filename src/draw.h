@@ -9,8 +9,10 @@
 #ifndef DRAW_H
 #define DRAW_H
 
+void draw_init(struct World *world);
+void draw_world(void);
+void draw_debug(void);
 void draw_set_debug_mode(int mode);
-void draw_world(struct World *world);
 void draw_rot_left(void);
 void draw_rot_right(void);
 void draw_rot_up(void);
@@ -21,9 +23,14 @@ void draw_walk_left(void);
 void draw_walk_right(void);
 void draw_walk_front(void);
 void draw_walk_back(void);
-void draw_set_screen_size(int width, int height);
-void draw_set_screen_active(bool active);
-void draw_set_screen_pos(double x, double y);
-void draw_set_screen_button(int button);
+void draw_mouse_projection(int button, bool drag);
+void draw_options_window(void);
+
+extern float draw_screen_x;
+extern float draw_screen_y;
+extern float draw_screen_width;
+extern float draw_screen_height;
+extern float projected_mouse_x;
+extern float projected_mouse_y;
 
 #endif

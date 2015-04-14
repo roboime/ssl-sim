@@ -62,24 +62,45 @@ if(BUILD_CLI)
 endif()
 
 if(BUILD_GUI)
-    # OpenGL Helper
-    add_subdirectory(src/drawsupport)
-    include_directories(src/drawsupport)
-
+    find_package(OpenGL REQUIRED)
+    find_package(GLEW REQUIRED)
+    include_directories(SYSTEM ${GLEW_INCLUDE_DIRS})
+    find_package(PkgConfig REQUIRED)
+    pkg_search_module(GLFW REQUIRED glfw3)
+    include_directories(SYSTEM ${GLFW_INCLUDE_DIRS})
+    include_directories(SYSTEM imgui)
     set(gui_app ssl-sim-gui)
     add_executable(${gui_app}
-        #src/ugly_test.h
-        #src/ugly_test.cpp
-        #src/main-gui.cpp
         src/gui_main.cpp
+        src/draw.h
+        src/draw.cpp
+        src/colors.h
+        src/glutils.h
         src/net.h
         src/net.cpp
+
+        # protobuf
         ${PROTO_CPP}
         ${PROTO_H}
-    )
 
-    target_link_libraries(${gui_app} sslsim drawsupport)
-    target_link_libraries(${gui_app} ${PROTOBUF_LIBRARIES})
+        # imgui
+        imgui/imconfig.h
+        imgui/imgui.cpp
+        imgui/imgui.h
+        imgui/stb_rect_pack.h
+        imgui/stb_textedit.h
+        imgui/stb_truetype.h
+    )
+    target_link_libraries(${gui_app} sslsim
+        ${PROTOBUF_LIBRARIES}
+        ${BULLET_DYNAMICS_LIBRARY}
+        ${BULLET_COLLISION_LIBRARY}
+        ${BULLET_MATH_LIBRARY}
+        ${OPENGL_LIBRARIES}
+        #${OPENGL_gl_LIBRARY}
+        ${GLEW_LIBRARIES}
+        ${GLFW_STATIC_LIBRARIES}
+    )
 endif()
 
 # vim: et sw=4 ts=3 sts=4
