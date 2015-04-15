@@ -190,28 +190,7 @@ static void key_callback(GLFWwindow *window, int key, int, int action,
   }
 }
 
-// static void char_mods_callback(GLFWwindow *window, unsigned int codepoint,
-// int mods) {
-static void char_mods_callback(GLFWwindow *, unsigned int codepoint, int) {
-  // Application
-  // double _x, _y;
-  // glfwGetCursorPos(window, &_x, &_y);
-  // int x(_x), y(_y);
-  // demoApplication->m_modifierKeys = mods;
-  // demoApplication->keyboardCallback(codepoint, x, y);
-
-  // switch (action) {
-  //  case GLFW_PRESS:
-  //    demoApplication->keyboardCallback(key, x, y);
-  //    break;
-  //  case GLFW_RELEASE:
-  //    demoApplication->keyboardUpCallback(key, x, y);
-  //    break;
-  //  case GLFW_REPEAT:
-  //  default:
-  //    break;
-  //}
-
+static void char_callback(GLFWwindow *, unsigned int codepoint) {
   // ImGui
   if (codepoint > 0 && codepoint < 0x10000)
     ImGui::GetIO().AddInputCharacter((unsigned short)codepoint);
@@ -519,7 +498,7 @@ int main(int, char **) {
 
   // callbacks
   glfwSetKeyCallback(window, key_callback);
-  glfwSetCharModsCallback(window, char_mods_callback);
+  glfwSetCharCallback(window, char_callback);
   glfwSetMouseButtonCallback(window, mouse_button_callback);
   glfwSetCursorPosCallback(window, cursor_pos_callback);
   glfwSetCursorEnterCallback(window, cursor_enter_callback);
