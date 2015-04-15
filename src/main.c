@@ -6,7 +6,10 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
+#define _XOPEN_SOURCE 700
+// http://stackoverflow.com/questions/6491019/struct-sigaction-incomplete-error
 #include <signal.h>
+#undef _XOPEN_SOURCE
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdbool.h>
