@@ -22,6 +22,9 @@ require_c11()
 if("${CMAKE_GENERATOR}" STREQUAL "Ninja" AND "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
     add_definitions("-Xclang -fcolor-diagnostics")
 endif()
+if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
+    add_definitions("-D_GNU_SOURCE")
+endif()
 
 # Bullet
 find_package(Bullet REQUIRED)
