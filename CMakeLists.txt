@@ -78,7 +78,7 @@ if(BUILD_GUI)
         # utils
         src/utils/colors.h
         src/utils/gl.h
-        src/utils/net.cpp
+        src/utils/net.c
         src/utils/net.h
         src/utils/stack_vector.h
 

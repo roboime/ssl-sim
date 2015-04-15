@@ -16,75 +16,75 @@
 
 // TODO: Windows implementation for better cross-platform
 
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+#include <unistd.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-#include <unistd.h>
-#include <stdio.h>
-#include <string.h>
-
-#include <string>
 
 static const unsigned int ONE = 1;
 static const unsigned char TTL = 3;
 
-namespace priv {
-struct SocketImpl {
+struct Socket {
   int sockfd;
   struct sockaddr_in saddr;
   struct ip_mreq mreq;
-
-  SocketImpl() {
-    memset(&saddr, 0, sizeof(struct sockaddr_in));
-    memset(&mreq, 0, sizeof(struct ip_mreq));
-  }
 };
-}
 
-Socket::Socket(int port, std::string addr, std::string iface)
-    : i(new priv::SocketImpl) {
+struct Socket *new_socket_iface(int port, const char *addr, const char *iface) {
+  struct Socket *i = (struct Socket *)calloc(1, sizeof(struct Socket *));
+
   // open a UDP socket
   if ((i->sockfd = socket(PF_INET, SOCK_DGRAM, IPPROTO_IP)) < 0)
     perror("Could not open socket file descriptor");
 
   i->saddr.sin_family = PF_INET;
   i->saddr.sin_port = htons(port);
-  // bind socket to the multicast address if present
-  i->saddr.sin_addr.s_addr =
-      (addr.empty() ? htonl(INADDR_ANY) : inet_addr(addr.c_str()));
 
-  i->mreq.imr_multiaddr.s_addr = inet_addr(addr.c_str());
-  i->mreq.imr_interface.s_addr =
-      (iface.empty() ? htonl(INADDR_ANY) : inet_addr(iface.c_str()));
+#define OR_ANY(ADDR) (strlen(ADDR) ? inet_addr(ADDR) : htonl(INADDR_ANY));
+  // bind socket to the multicast address if present
+  i->saddr.sin_addr.s_addr = OR_ANY(addr);
+
+  i->mreq.imr_multiaddr.s_addr = inet_addr(addr);
+  i->mreq.imr_interface.s_addr = OR_ANY(iface);
+#undef OR_ANY
+
+  return i;
 }
 
-Socket::~Socket() {
+struct Socket *new_socket(int port, const char *addr) {
+  return new_socket_iface(port, addr, "");
+}
+
+void delete_socket(struct Socket *socket) {
   // shutdown socket
-  shutdown(i->sockfd, 2);
+  shutdown(socket->sockfd, 2);
 
   // close socket
-  close(i->sockfd);
+  close(socket->sockfd);
 
-  delete i;
+  free(socket);
 }
 
-bool Socket::receiver_bind() {
+bool socket_receiver_bind(struct Socket *socket) {
   // enable address reuse
-  if (setsockopt(i->sockfd, SOL_SOCKET, SO_REUSEADDR, &ONE, sizeof(ONE)) < 0) {
+  if (setsockopt(socket->sockfd, SOL_SOCKET, SO_REUSEADDR, &ONE, sizeof(ONE)) < 0) {
     perror("Could not enable address reuse");
     return false;
   }
 
   // bind to interface
-  if (bind(i->sockfd, (struct sockaddr *)&i->saddr, sizeof(i->saddr)) < 0) {
+  if (bind(socket->sockfd, (struct sockaddr *)&socket->saddr, sizeof(socket->saddr)) < 0) {
     perror("Could not bind socket to interface");
     return false;
   }
 
   // join multicast group
-  if (setsockopt(i->sockfd, IPPROTO_IP, IP_ADD_MEMBERSHIP,
-                 (const void *)&i->mreq, sizeof(i->mreq)) < 0) {
+  if (setsockopt(socket->sockfd, IPPROTO_IP, IP_ADD_MEMBERSHIP,
+                 (const void *)&socket->mreq, sizeof(socket->mreq)) < 0) {
     perror("Could not join to multicast");
     return false;
   }
@@ -92,26 +92,13 @@ bool Socket::receiver_bind() {
   return true;
 }
 
-int Socket::receive(char *into_buffer, int buffer_size) {
-  socklen_t socklen = sizeof(struct sockaddr_in);
-
-  // receive packet from socket
-  int len;
-  if ((len = recvfrom(i->sockfd, into_buffer, buffer_size - 1, 0,
-                      (struct sockaddr *)&i->saddr, &socklen)) < 0)
-    perror("Could not receive from socket");
-
-  into_buffer[len] = 0;
-  return len;
-}
-
-bool Socket::sender_bind() {
+bool socket_sender_bind(struct Socket *socket) {
   struct sockaddr_in saddr;
   saddr.sin_family = PF_INET;
   saddr.sin_port = htons(0);                 // Use the first free port
   saddr.sin_addr.s_addr = htonl(INADDR_ANY); // bind socket to any address
 
-  if (bind(i->sockfd, (struct sockaddr *)&saddr, sizeof(struct sockaddr_in)) <
+  if (bind(socket->sockfd, (struct sockaddr *)&saddr, sizeof(struct sockaddr_in)) <
       0) {
     perror("Error binding socket to interface");
     return false;
@@ -122,21 +109,21 @@ bool Socket::sender_bind() {
   iaddr.s_addr = INADDR_ANY; // use DEFAULT interface
 
   // Set the outgoing interface to DEFAULT
-  if (setsockopt(i->sockfd, IPPROTO_IP, IP_MULTICAST_IF, &iaddr,
+  if (setsockopt(socket->sockfd, IPPROTO_IP, IP_MULTICAST_IF, &iaddr,
                  sizeof(struct in_addr)) < 0) {
     perror("Could not set outgoing interface");
     return false; // XXX: maybe some of these errors can be ignored?
   }
 
   // Set multicast packet TTL to 3; default TTL is 1
-  if (setsockopt(i->sockfd, IPPROTO_IP, IP_MULTICAST_TTL, &TTL, sizeof(TTL)) <
+  if (setsockopt(socket->sockfd, IPPROTO_IP, IP_MULTICAST_TTL, &TTL, sizeof(TTL)) <
       0) {
     perror("Could not set multicast packet TTL");
     return false;
   }
 
   // send multicast traffic to myself too
-  if (setsockopt(i->sockfd, IPPROTO_IP, IP_MULTICAST_LOOP, &ONE, sizeof(ONE)) <
+  if (setsockopt(socket->sockfd, IPPROTO_IP, IP_MULTICAST_LOOP, &ONE, sizeof(ONE)) <
       0) {
     perror("Could not enable multicast loop to self");
     return false;
@@ -145,30 +132,47 @@ bool Socket::sender_bind() {
   return true;
 }
 
-int Socket::send(char *from_buffer, int send_size) {
+int socket_receive(struct Socket *socket, char *into_buffer, int buffer_size) {
   socklen_t socklen = sizeof(struct sockaddr_in);
-  int len = sendto(i->sockfd, from_buffer, send_size, 0,
-                   (struct sockaddr *)&i->saddr, socklen);
+
+  // receive packet from socket
+  int len;
+  if ((len = recvfrom(socket->sockfd, into_buffer, buffer_size - 1, 0,
+                      (struct sockaddr *)&socket->saddr, &socklen)) < 0)
+    perror("Could not receive from socket");
+
+  into_buffer[len] = 0;
   return len;
 }
 
-#if 0
+int socket_send(struct Socket *socket, const char *from_buffer, int send_size) {
+  socklen_t socklen = sizeof(struct sockaddr_in);
+  int len = sendto(socket->sockfd, from_buffer, send_size, 0,
+                   (struct sockaddr *)&socket->saddr, socklen);
+  return len;
+}
+
+#ifdef _NET_DEMO_RCVR
 int main() {
-  Socket socket(5007, "224.1.1.1");
-  socket.receiver_bind();
+  struct Socket *socket = new_socket(5007, "224.1.1.1");
+  socket_receiver_bind(socket);
 
   char buffer[10240];
-  socket.receive(buffer, 10240);
+  socket_receive(socket, buffer, 10240);
   puts(buffer);
+
+  delete_socket(socket);
 }
 #endif
 
-#if 0
+#ifdef _NET_DEMO_SNDR
 int main() {
-  Socket socket(5007, "224.1.1.1");
-  socket.sender_bind();
+  struct Socket *socket = new_socket(5007, "224.1.1.1");
+  socket_sender_bind(socket);
 
-  std::string text = "Hurray!!!";
-  socket.send(const_cast<char *>(text.c_str()), text.size());
+  const char *text = "Hurray!!!";
+  socket_send(socket, text, strlen(text));
+
+  delete_socket(socket);
 }
 #endif

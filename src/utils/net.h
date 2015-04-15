@@ -8,25 +8,25 @@
 
 #ifndef UTILS_NET_H_
 #define UTILS_NET_H_
+#ifdef __cplusplus
+extern "C" {
+#endif
+// -----------------------------------------------------------------------------
 
-#include <string>
+#include <stdbool.h>
 
-namespace priv {
-struct SocketImpl;
+struct Socket *new_socket(int port, const char *addr);
+struct Socket *new_socket_iface(int port, const char *addr, const char *iface);
+void delete_socket(struct Socket *socket);
+
+bool socket_receiver_bind(struct Socket *socket);
+bool socket_sender_bind(struct Socket *socket);
+
+int socket_receive(struct Socket *socket, char *into_buffer, int buffer_size);
+int socket_send(struct Socket *socket, const char *from_buffer, int send_size);
+
+// -----------------------------------------------------------------------------
+#ifdef __cplusplus
 }
-
-class Socket {
-  priv::SocketImpl *i;
-
-public:
-  Socket(int port, std::string addr = "", std::string iface = "");
-  ~Socket();
-
-  bool receiver_bind();
-  int receive(char *into_buffer, int buffer_size);
-
-  bool sender_bind();
-  int send(char *from_buffer, int send_size);
-};
-
+#endif
 #endif
