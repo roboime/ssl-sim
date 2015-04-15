@@ -18,6 +18,9 @@ standard_paths(${PROJECT_BINARY_DIR} bin lib)
 require_cxx14()
 require_c11()
 
+# http://stackoverflow.com/questions/6491019/struct-sigaction-incomplete-error
+add_definitions("-D_XOPEN_SOURCE=700")
+
 # enable clang-color with ninja
 if("${CMAKE_GENERATOR}" STREQUAL "Ninja" AND "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
     add_definitions("-Xclang -fcolor-diagnostics")

@@ -39,12 +39,14 @@ void sigint_handler(int sig);
 int main(void) {
   printf("Hello World!\n");
 
-  // Handle SIGINT (Ctrl+C)
-  struct sigaction sigIntHandler;
-  sigIntHandler.sa_handler = sigint_handler;
-  sigemptyset(&sigIntHandler.sa_mask);
-  sigIntHandler.sa_flags = 0;
-  sigaction(SIGINT, &sigIntHandler, NULL);
+  {
+    // Handle SIGINT (Ctrl+C)
+    struct sigaction sa;
+    sa.sa_handler = sigint_handler;
+    sigemptyset(&sa.sa_mask);
+    sa.sa_flags = 0;
+    sigaction(SIGINT, &sa, NULL);
+  }
 
   // Create a world
   struct World *world = new_world(&FIELD_2015);
