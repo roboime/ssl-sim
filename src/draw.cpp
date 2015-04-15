@@ -14,8 +14,8 @@
 #include <btBulletDynamicsCommon.h>
 #include "imgui.h"
 
-#include "glutils.h"
-#include "colors.h"
+#include "utils/gl.h"
+#include "utils/colors.h"
 
 // Utils
 template <typename T> constexpr T RAD(T D) { return M_PI * D / 180.; }
@@ -144,12 +144,11 @@ const float &screen_width{draw_screen_width};
 const float &screen_height{draw_screen_height};
 const float &screen_x{draw_screen_x};
 const float &screen_y{draw_screen_y};
-;
 
 btVector3 get_ray_to(btScalar x, btScalar y);
 btVector3 get_plane_from_cam(const btVector3 ray);
 
-#if 1
+#if 0
 btScalar cam_ele{30.0};
 btScalar cam_azi{10.0};
 btScalar cam_dist{1.0};

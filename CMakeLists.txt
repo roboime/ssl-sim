@@ -71,13 +71,16 @@ if(BUILD_GUI)
     include_directories(SYSTEM imgui)
     set(gui_app ssl-sim-gui)
     add_executable(${gui_app}
-        src/gui_main.cpp
         src/draw.h
         src/draw.cpp
-        src/colors.h
-        src/glutils.h
-        src/net.h
-        src/net.cpp
+        src/gui_main.cpp
+
+        # utils
+        src/utils/colors.h
+        src/utils/gl.h
+        src/utils/net.cpp
+        src/utils/net.h
+        src/utils/stack_vector.h
 
         # protobuf
         ${PROTO_CPP}

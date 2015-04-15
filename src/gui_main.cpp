@@ -20,7 +20,7 @@
 #include "imgui.h"
 #include "sslsim.h"
 #include "draw.h"
-#include "colors.h"
+#include "utils/colors.h"
 
 #include <btBulletDynamicsCommon.h>
 
@@ -134,6 +134,7 @@ static void key_callback(GLFWwindow *window, int key, int, int action,
     io.KeyShift = (mods & GLFW_MOD_SHIFT) != 0;
 
   } else if (action & (GLFW_PRESS | GLFW_REPEAT)) {
+    static int r{0};
 
     // Application
     switch (key) {
@@ -171,12 +172,18 @@ static void key_callback(GLFWwindow *window, int key, int, int action,
       break;
 #if 1
     case GLFW_KEY_R: {
-      static int r{0};
-      world_add_robot(world, r++, TEAM_BLUE);
+      static int i{0};
+      if (r < 100) {
+        world_add_robot(world, i++, TEAM_BLUE);
+        r++;
+      }
     } break;
     case GLFW_KEY_F: {
-      static int r{0};
-      world_add_robot(world, r++, TEAM_YELLOW);
+      static int i{0};
+      if (r < 100) {
+        world_add_robot(world, i++, TEAM_YELLOW);
+        r++;
+      }
     } break;
 #endif
     }

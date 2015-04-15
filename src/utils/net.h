@@ -6,8 +6,8 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-#ifndef NET_H
-#define NET_H
+#ifndef UTILS_NET_H_
+#define UTILS_NET_H_
 
 #include <string>
 
