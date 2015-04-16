@@ -27,5 +27,5 @@ install:
   # GLEW
   - sudo apt-get install -qq libglew-dev
 script:
-  - mkdir build && cd build && cmake .. -G "Unix Makefiles" && make -j8
+  - mkdir build && cd build && cmake .. -G "Unix Makefiles" -DCMAKE_RULE_MESSAGES=OFF && make -j8
   #TODO: simple tests maybe?
