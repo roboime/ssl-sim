@@ -12,10 +12,12 @@ install:
   - sudo apt-get install -qq cmake
   # Google Protobuf
   - sudo apt-get install -qq protobuf-compiler libprotobuf-dev
-  # GLFW
-  - sudo apt-get install -qq libglfw3-dev
   # Bullet
   - sudo apt-get install -qq libbullet-dev
+  # GLFW
+  - sudo apt-get install -qq libglfw3-dev libxrandr-dev libxi-dev
+  # GLEW
+  - sudo apt-get install -qq libglew-dev
 script:
   - mkdir build && cd build && cmake .. -G "Unix Makefiles" && make -j8
   #TODO: simple tests maybe?
