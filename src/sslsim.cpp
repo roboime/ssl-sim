@@ -38,49 +38,48 @@ static Pos2 random_robot_pos2(const FieldGeometry *f) {
 extern "C" {
 
 // physics body
-struct BallShape : public btSphereShape {
-  BallShape() : btSphereShape{BALL_DIAM / 2} {}
-};
 struct BallCI : public btRigidBodyCI {
-#if 0
-  BallCI(btDefaultMotionState *s, btCollisionShape *h)
-    : btRigidBodyCI(BALL_MASS, s, h, {0, 0, 0}) {
-      m_restitution = 0.5;
-    }
-#endif
-  BallCI(btCollisionShape *h)
-      : btRigidBodyCI(BALL_MASS, nullptr, h, {0, 0, 0}) {
+  static struct Shape : public btSphereShape {
+    Shape() : btSphereShape{BALL_DIAM / 2} {}
+  } shape;
+  BallCI() : btRigidBodyCI(BALL_MASS, nullptr, &shape, {0, 0, 0}) {
     m_restitution = 0.5;
   }
 };
-static BallShape ball_shape{};
-static const BallCI ball_ci{&ball_shape};
+
 struct Ball {
+  static const BallCI ci;
+
   Robot *last_touching_robot{nullptr};
 
-  btRigidBody body{ball_ci};
+  btRigidBody body{ci};
 
-  //Ball() { shape.calculateLocalInertia(mass, inertia); }
-};
-
-// physics body
-struct RobotShape : public btCylinderShapeZ {
-  RobotShape()
-      : btCylinderShapeZ{{ROBOT_DIAM / 2, ROBOT_DIAM / 2, ROBOT_HEIGHT / 2}} {}
-};
-struct RobotCI : public btRigidBodyCI {
-  RobotCI(btCollisionShape *h)
-      : btRigidBodyCI(ROBOT_MASS, nullptr, h, {0, 0, 0}) {
-    m_restitution = 0.1;
+  Ball(void) {
+    // shape.calculateLocalInertia(mass, inertia);
   }
 };
-static RobotShape robot_shape{};
-static const RobotCI robot_ci{&robot_shape};
+
+BallCI::Shape BallCI::shape{};
+const BallCI Ball::ci{};
+
+struct RobotCI : public btRigidBodyCI {
+  static struct Shape : public btCylinderShapeZ {
+    Shape()
+        : btCylinderShapeZ{{ROBOT_DIAM / 2, ROBOT_DIAM / 2, ROBOT_HEIGHT / 2}} {
+    }
+  } shape;
+  RobotCI() : btRigidBodyCI(ROBOT_MASS, nullptr, &shape, {0, 0, 0}) {
+    m_restitution = 0.2;
+  }
+};
+
 struct Robot {
+  static const RobotCI ci;
+
   int id;
   Team team;
 
-  btRigidBody body{robot_ci};
+  btRigidBody body{ci};
 
   Robot(int id, Team team) : id(id), team(team) {
     // shape.calculateLocalInertia(mass, inertia);
@@ -92,18 +91,41 @@ struct Robot {
   Robot(void) : Robot(-1, TEAM_NONE) {}
 };
 
-struct Ground {
-  // physics body
-  btStaticPlaneShape shape{{0, 0, 1}, 1};
-  btDefaultMotionState motion_state{btTransform({0, 0, 0, 1}, {0, 0, -1})};
-  // const btRigidBodyCI body_ci{0, &motion_state, &shape, {0, 0, 0}};
-  const struct CI : public btRigidBodyCI {
-    CI(btDefaultMotionState *s, btCollisionShape *h)
-        : btRigidBodyCI(0, s, h, {0, 0, 0}) {
-      m_restitution = 0.9;
-    }
-  } body_ci{&motion_state, &shape};
-  btRigidBody body{body_ci};
+RobotCI::Shape RobotCI::shape{};
+const RobotCI Robot::ci{};
+
+// const btRigidBodyCI body_ci{0, &motion_state, &shape, {0, 0, 0}};
+struct PlaneCI : public btRigidBodyCI {
+  btStaticPlaneShape shape;
+  PlaneCI(btVector3 plane_normal, btScalar plane_constant)
+      : btRigidBodyCI(0, nullptr, &shape, {0, 0, 0}),
+        shape{plane_normal, plane_constant} {
+    m_restitution = 1.0;
+  }
+};
+
+struct WorldBox {
+  PlaneCI ground_ci;
+  PlaneCI ceil_ci;
+  PlaneCI left_wall_ci;
+  PlaneCI right_wall_ci;
+  PlaneCI top_wall_ci;
+  PlaneCI bottom_wall_ci;
+  btRigidBody ground_body;
+  btRigidBody ceil_body;
+  btRigidBody left_wall_body;
+  btRigidBody right_wall_body;
+  btRigidBody top_wall_body;
+  btRigidBody bottom_wall_body;
+  WorldBox(const FieldGeometry *field)
+      : ground_ci{{0, 0, 1}, 0.0}, ceil_ci{{0, 0, -1}, -10.0},
+        left_wall_ci{{1, 0, 0}, -field_limit_x(field)},
+        right_wall_ci{{-1, 0, 0}, -field_limit_x(field)},
+        top_wall_ci{{0, 1, 0}, -field_limit_y(field)},
+        bottom_wall_ci{{0, -1, 0}, -field_limit_y(field)},
+        ground_body{ground_ci}, ceil_body{ceil_ci},
+        left_wall_body{left_wall_ci}, right_wall_body{right_wall_ci},
+        top_wall_body{top_wall_ci}, bottom_wall_body{bottom_wall_ci} {}
 };
 
 struct World {
@@ -113,6 +135,9 @@ struct World {
   // btAlignedObjectArray<Ball> balls{};
   std::stack_vector<Ball, 20> balls{};
   std::stack_vector<Robot, 100> robots{};
+
+  // the ground
+  WorldBox world_box;
 
   // TODO: findout what can be static, maybe?
 
@@ -135,19 +160,22 @@ struct World {
   btDiscreteDynamicsWorld dynamics{&dispatcher, &broadphase, &solver,
                                    &collision_configuration};
 
-  // the ground
-  Ground ground{};
-
-  World(const FieldGeometry *const field) : field{field} {
+  World(const FieldGeometry *const field_) : field{field_}, world_box{field_} {
     dynamics.setGravity({0, 0, -9.80665});
-    dynamics.addRigidBody(&ground.body);
+    dynamics.addRigidBody(&world_box.ground_body);
+    dynamics.addRigidBody(&world_box.ceil_body);
+    dynamics.addRigidBody(&world_box.left_wall_body);
+    dynamics.addRigidBody(&world_box.right_wall_body);
+    dynamics.addRigidBody(&world_box.top_wall_body);
+    dynamics.addRigidBody(&world_box.bottom_wall_body);
     balls.emplace_back();
     dynamics.addRigidBody(&balls.back().body);
     ball_set_vec(&balls.back(), {});
   }
 
   World(const World *w)
-      : field{w->field}, balls{w->balls}, robots{w->robots}, broadphase{},
+      : field{w->field}, balls{w->balls}, robots{w->robots},
+        world_box{w->world_box}, broadphase{},
         // broadphase{w->broadphase},
         collision_configuration{w->collision_configuration},
         // dispatcher{w->dispatcher},
@@ -164,7 +192,12 @@ struct World {
       dynamics.removeRigidBody(&robot.body);
     for (auto &ball : balls)
       dynamics.removeRigidBody(&ball.body);
-    dynamics.removeRigidBody(&ground.body);
+    dynamics.removeRigidBody(&world_box.ground_body);
+    dynamics.removeRigidBody(&world_box.ceil_body);
+    dynamics.removeRigidBody(&world_box.left_wall_body);
+    dynamics.removeRigidBody(&world_box.right_wall_body);
+    dynamics.removeRigidBody(&world_box.top_wall_body);
+    dynamics.removeRigidBody(&world_box.bottom_wall_body);
   }
 };
 

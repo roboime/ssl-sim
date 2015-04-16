@@ -90,9 +90,12 @@ int serialize_field(const FieldGeometry *field, char *buffer, int buffer_size) {
   field_geometry->set_center_circle_radius(field->center_circle_radius);
   field_geometry->set_defense_radius(field->defense_radius);
   field_geometry->set_defense_stretch(field->defense_stretch);
-  field_geometry->set_free_kick_from_defense_dist(field->free_kick_from_defense_dist);
-  field_geometry->set_penalty_spot_from_field_line_dist(field->penalty_spot_from_field_line_dist);
-  field_geometry->set_penalty_line_from_spot_dist(field->penalty_line_from_spot_dist);
+  field_geometry->set_free_kick_from_defense_dist(
+      field->free_kick_from_defense_dist);
+  field_geometry->set_penalty_spot_from_field_line_dist(
+      field->penalty_spot_from_field_line_dist);
+  field_geometry->set_penalty_line_from_spot_dist(
+      field->penalty_line_from_spot_dist);
 
   if (wrapper.SerializeToArray(buffer, buffer_size))
     return wrapper.ByteSize();

@@ -542,9 +542,14 @@ int main(int, char **) {
 
       send_size = serialize_world(world, buffer, buffer_size);
       switch (send_size) {
-        case -1: ImGui::Text("Something wrong serializing world"); break;
-        case 0: ImGui::Text("Zero size data serializing world"); break;
-        default: socket_send(socket, buffer, send_size);
+      case -1:
+        ImGui::Text("Something wrong serializing world");
+        break;
+      case 0:
+        ImGui::Text("Zero size data serializing world");
+        break;
+      default:
+        socket_send(socket, buffer, send_size);
       }
 
       constexpr int send_geometry_every{120};
@@ -552,9 +557,14 @@ int main(int, char **) {
         auto field = world_get_field(world);
         send_size = serialize_field(field, buffer, buffer_size);
         switch (send_size) {
-          case -1: ImGui::Text("Something wrong serializing field"); break;
-          case 0: ImGui::Text("Zero size data serializing field"); break;
-          default: socket_send(socket, buffer, send_size);
+        case -1:
+          ImGui::Text("Something wrong serializing field");
+          break;
+        case 0:
+          ImGui::Text("Zero size data serializing field");
+          break;
+        default:
+          socket_send(socket, buffer, send_size);
         }
       }
     }

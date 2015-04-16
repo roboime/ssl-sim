@@ -32,6 +32,14 @@ struct FieldGeometry {
   Float penalty_line_from_spot_dist;
 };
 
+inline Float field_limit_x(const struct FieldGeometry *field) {
+  return field->field_length / 2 + field->boundary_width + field->referee_width;
+}
+
+inline Float field_limit_y(const struct FieldGeometry *field) {
+  return field->field_width / 2 + field->boundary_width + field->referee_width;
+}
+
 extern const struct FieldGeometry FIELD_2014_SINGLE;
 extern const struct FieldGeometry FIELD_2014_DOUBLE;
 extern const struct FieldGeometry FIELD_2015;
