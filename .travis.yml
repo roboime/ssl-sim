@@ -4,6 +4,8 @@ compiler:
   #- gcc #XXX: there's a bug on gcc
 before_install:
   - sudo apt-add-repository -y ppa:pyglfw/pyglfw
+  - sudo add-apt-repository -y "deb http://archive.getdeb.net/ubuntu precise-getdeb games"
+  - wget -q -O- http://archive.getdeb.net/getdeb-archive.key | sudo apt-key add -
   - sudo apt-get update -qq
 install:
   # CMake
