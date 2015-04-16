@@ -3,7 +3,7 @@ compiler:
   - clang
   #- gcc #XXX: there's a bug on gcc
 before_install:
-  - sudo apt-add-repository -y ppa:keithw/glfw3
+  - sudo apt-add-repository -y ppa:pyglfw/pyglfw
   - sudo apt-get update -qq
 install:
   # CMake
