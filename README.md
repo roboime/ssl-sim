@@ -14,3 +14,17 @@ Main goals are:
 2. Simple API for usage in code to aid AI.
 3. Stand-alone GUI which speaks default protocols (grSim and ssl-vision).
 4. Integrated referee for fully unsupervised matches.
+
+Compiling
+=========
+
+This project uses C++11 features, some of which do not work with gcc maybe
+(see `src/utils/stack_vector.hh`, that's causing ICE on gcc).
+
+Only `clang` is tested, though on older systems you'll need a recent libstc++
+if that's what your system uses, though libc++ is desired it's not ABI compatible
+on older systems.  That is a fairly known issue, for a working solution the
+travis build script (`.travis.yml`) is a great example and reference.
+
+Currently __OS X Yosemite__ and __Ubuntu 14.04/12.04__ are known to work.
+If you make it work on other systems please do add them here.
