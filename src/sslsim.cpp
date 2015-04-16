@@ -37,40 +37,50 @@ static Pos2 random_robot_pos2(const FieldGeometry *f) {
 
 extern "C" {
 
+// physics body
+struct BallShape : public btSphereShape {
+  BallShape() : btSphereShape{BALL_DIAM / 2} {}
+};
+struct BallCI : public btRigidBodyCI {
+#if 0
+  BallCI(btDefaultMotionState *s, btCollisionShape *h)
+    : btRigidBodyCI(BALL_MASS, s, h, {0, 0, 0}) {
+      m_restitution = 0.5;
+    }
+#endif
+  BallCI(btCollisionShape *h)
+      : btRigidBodyCI(BALL_MASS, nullptr, h, {0, 0, 0}) {
+    m_restitution = 0.5;
+  }
+};
+static BallShape ball_shape{};
+static const BallCI ball_ci{&ball_shape};
 struct Ball {
   Robot *last_touching_robot{nullptr};
 
-  // physics body
-  btSphereShape shape{BALL_DIAM / 2};
-  btDefaultMotionState motion_state{
-      btTransform({0, 0, 0, 1}, {0, 0, DROP_HEIGHT})};
-  const struct CI : public btRigidBodyCI {
-    CI(btDefaultMotionState *s, btCollisionShape *h)
-        : btRigidBodyCI(BALL_MASS, s, h, {0, 0, 0}) {
-      m_restitution = 0.5;
-    }
-  } body_ci{&motion_state, &shape};
-  btRigidBody body{body_ci};
+  btRigidBody body{ball_ci};
 
-  // Ball() { shape.calculateLocalInertia(mass, inertia); }
+  //Ball() { shape.calculateLocalInertia(mass, inertia); }
 };
 
+// physics body
+struct RobotShape : public btCylinderShapeZ {
+  RobotShape()
+      : btCylinderShapeZ{{ROBOT_DIAM / 2, ROBOT_DIAM / 2, ROBOT_HEIGHT / 2}} {}
+};
+struct RobotCI : public btRigidBodyCI {
+  RobotCI(btCollisionShape *h)
+      : btRigidBodyCI(ROBOT_MASS, nullptr, h, {0, 0, 0}) {
+    m_restitution = 0.1;
+  }
+};
+static RobotShape robot_shape{};
+static const RobotCI robot_ci{&robot_shape};
 struct Robot {
   int id;
   Team team;
 
-  // physics body
-  btCylinderShapeZ shape{{ROBOT_DIAM / 2, ROBOT_DIAM / 2, ROBOT_HEIGHT / 2}};
-  // btSphereShape shape{BALL_DIAM / 2};
-  btDefaultMotionState motion_state{
-      btTransform({0, 0, 0, 1}, {0, 0, ROBOT_HEIGHT + 0.001 + 0.5})};
-  const struct CI : public btRigidBodyCI {
-    CI(btDefaultMotionState *s, btCollisionShape *h)
-        : btRigidBodyCI(ROBOT_MASS, s, h, {0, 0, 0}) {
-      m_restitution = 0.9;
-    }
-  } body_ci{&motion_state, &shape};
-  btRigidBody body{body_ci};
+  btRigidBody body{robot_ci};
 
   Robot(int id, Team team) : id(id), team(team) {
     // shape.calculateLocalInertia(mass, inertia);
@@ -79,7 +89,7 @@ struct Robot {
   // TODO: wheels and their joints
 
   // DO NOT USE THIS CONSTRUCTOR:
-  Robot(void) : Robot(-1, TEAM_BLUE) {}
+  Robot(void) : Robot(-1, TEAM_NONE) {}
 };
 
 struct Ground {
@@ -107,6 +117,7 @@ struct World {
   // TODO: findout what can be static, maybe?
 
   // the simulation timestamp, and a clock, can be used for comparison
+  unsigned int frame_number{0};
   btScalar timestamp{0};
   btClock real_clock{};
 
@@ -131,7 +142,8 @@ struct World {
     dynamics.setGravity({0, 0, -9.80665});
     dynamics.addRigidBody(&ground.body);
     balls.emplace_back();
-    dynamics.addRigidBody(&balls[0].body);
+    dynamics.addRigidBody(&balls.back().body);
+    ball_set_vec(&balls.back(), {});
   }
 
   World(const World *w)
@@ -165,14 +177,36 @@ void world_step(struct World *world, Float time_step, int max_substeps,
                 Float fixed_time_step) {
   world->dynamics.stepSimulation(time_step, max_substeps, fixed_time_step);
   world->timestamp += time_step;
+  world->frame_number++;
 }
 
 const FieldGeometry *world_get_field(const World *world) {
   return world->field;
 }
-Ball *world_get_ball(World *world) { return &(world->balls[0]); }
-int world_robot_count(World *world) { return world->robots.size(); }
-Robot *world_get_robot(World *world, int index) {
+
+int world_ball_count(const World *world) { return world->balls.size(); }
+
+const Ball *world_get_ball(const World *world, int index) {
+  return &(world->balls[index]);
+}
+
+const Ball *world_get_game_ball(const World *world) {
+  return &(world->balls[0]);
+}
+
+Ball *world_get_mut_ball(World *world, int index) {
+  return &(world->balls[index]);
+}
+
+Ball *world_get_mut_game_ball(World *world) { return &(world->balls[0]); }
+
+int world_robot_count(const World *world) { return world->robots.size(); }
+
+const Robot *world_get_robot(const World *world, int index) {
+  return &world->robots[index];
+}
+
+Robot *world_get_mut_robot(World *world, int index) {
   return &world->robots[index];
 }
 
@@ -183,59 +217,77 @@ void world_add_robot(World *world, int id, Team team) {
   // TODO: robot position
 }
 
+unsigned int world_get_frame_number(const World *world) {
+  return world->frame_number;
+}
+
+double world_get_timestamp(const World *world) { return world->timestamp; }
+
 btDiscreteDynamicsWorld *world_bt_dynamics(struct World *world) {
   return &world->dynamics;
 }
 
 // ball.h impl
-struct Vec3 ball_get_vec(struct Ball *ball) {
-  btTransform trans;
-  ball->body.getMotionState()->getWorldTransform(trans);
+Vec3 ball_get_vec(const Ball *ball) {
+  auto trans = ball->body.getWorldTransform();
   auto orig = trans.getOrigin();
   return {orig.getX(), orig.getY(), orig.getZ()};
 }
 
-void ball_set_vec(struct Ball *ball, const struct Vec2 vec) {
+void ball_set_vec(Ball *ball, const Vec2 vec) {
   auto transf = btTransform({0, 0, 0, 1}, {vec.x, vec.y, DROP_HEIGHT});
   ball->body.setWorldTransform(transf);
   ball->body.activate(true);
 }
 
-struct Pos3 ball_get_pos(struct Ball *ball);
-void ball_set_pos(struct Ball *ball, const struct Pos3 pos);
+Pos3 ball_get_pos(const Ball *ball);
 
-struct Pos3 ball_get_vel(struct Ball *ball);
-void ball_set_vel(struct Ball *ball, const struct Pos3 vel);
+void ball_set_pos(Ball *ball, const Pos3 pos);
 
-int ball_is_touching_robot(struct Ball *ball, struct Robot *robot);
+Pos3 ball_get_vel(const Ball *ball);
 
-struct Robot *ball_last_touching_robot(struct Ball *ball);
+void ball_set_vel(Ball *ball, const Pos3 vel);
+
+int ball_is_touching_robot(const Ball *ball, const Robot *robot);
+
+Robot *ball_last_touching_robot(Ball *ball);
 
 /// fast squared speed (magnitude of velocity)
-Float ball_get_speed2(struct Ball *ball);
+Float ball_get_speed2(const Ball *ball);
 
 /// fast squared speed (magnitude of velocity)
-Float ball_get_peak_speed2_from_last_kick(struct Ball *ball);
+Float ball_get_peak_speed2_from_last_kick(const Ball *ball);
 
-btRigidBody *ball_bt_rigid_body(struct Ball *ball) { return &ball->body; }
+btRigidBody *ball_bt_rigid_body(Ball *ball) { return &ball->body; }
 
 // robot.h impl
-int get_id(struct Robot *robot);
-enum Team get_team(struct Robot *robot);
+int get_id(const Robot *robot) { return robot->id; }
 
-struct Pos2 robot_get_pos(struct Robot *robot);
-void robot_set_pos(struct Robot *robot, const struct Pos2 pos) {
+enum Team get_team(const Robot *robot) { return robot->team; }
+
+Pos2 robot_get_pos(const Robot *robot) {
+  auto trans = robot->body.getWorldTransform();
+  auto orig = trans.getOrigin();
+  auto rot = trans.getRotation();
+  // XXX: rot.getW() will get the rotation in respect to the quaternion axis,
+  // the correct way would be to project it to {0, 0, 1}
+  return {orig.getX(), orig.getY(), rot.getW()};
+}
+
+void robot_set_pos(Robot *robot, const Pos2 pos) {
   auto transf = btTransform({0, 0, 1, pos.w}, {pos.x, pos.y, DROP_HEIGHT});
   robot->body.setWorldTransform(transf);
   robot->body.activate(true);
 }
 
-struct Pos2 robot_get_vel(struct Robot *robot);
-void robot_set_vel(struct Robot *robot, const struct Pos2 vel);
+Pos2 robot_get_vel(const Robot *robot);
+
+void robot_set_vel(Robot *robot, const Pos2 vel);
 
 /// return is C bool (1 for true, 0 for false)
-int robot_is_touching_robot(struct Robot *robot, struct Robot *tobor);
+int robot_is_touching_robot(const Robot *robot, const Robot *tobor);
 
 /// fast squared speed (magnitude of velocity)
-Float robot_get_speed2(struct Robot *robot);
-}
+Float robot_get_speed2(const Robot *robot);
+
+} // end extern

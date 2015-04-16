@@ -20,7 +20,9 @@
 #include "imgui.h"
 #include "sslsim.h"
 #include "draw.h"
+#include "serialize.h"
 #include "utils/colors.h"
+#include "utils/net.h"
 
 #include <btBulletDynamicsCommon.h>
 
@@ -64,7 +66,7 @@ static void mouse_button_callback(GLFWwindow *, int button, int action,
 
   if (action == GLFW_RELEASE) {
     if (screen_active && mods & GLFW_MOD_ALT)
-      ball_set_vec(world_get_ball(world),
+      ball_set_vec(world_get_mut_game_ball(world),
                    {projected_mouse_x, projected_mouse_y});
     set_screen_button(0);
   }
@@ -462,17 +464,22 @@ void sigint_handler(int) {
 }
 
 int main(int, char **) {
-
-  // Handle SIGINT (Ctrl+C)
-  struct sigaction sigIntHandler;
-  sigIntHandler.sa_handler = sigint_handler;
-  sigemptyset(&sigIntHandler.sa_mask);
-  sigIntHandler.sa_flags = 0;
-  sigaction(SIGINT, &sigIntHandler, NULL);
+  {
+    // Handle SIGINT (Ctrl+C)
+    struct sigaction sa;
+    sa.sa_handler = sigint_handler;
+    sigemptyset(&sa.sa_mask);
+    sa.sa_flags = 0;
+    sigaction(SIGINT, &sa, NULL);
+  }
 
   // Create a world
   world = new_world(&FIELD_2015);
   draw_init(world);
+
+  // Create and bind socket
+  auto socket = new_socket(11002, "224.5.23.2");
+  socket_sender_bind(socket);
 
   // int width, int height, const char *title,
   // DemoApplication *demoApp) {
@@ -516,6 +523,7 @@ int main(int, char **) {
   // bool show_test_window = true;
   // bool show_another_window = false;
 
+  int send_geometry{0};
   while (!glfwWindowShouldClose(window)) {
     // ImGuiIO &io = ImGui::GetIO();
     mousePressed[0] = mousePressed[1] = false;
@@ -525,6 +533,31 @@ int main(int, char **) {
     // TODO: realtime step
     world_step(world, 1.0 / 60, 10, 1.0 / 600);
     // world_step(world, 1.0 / 300, 10, 1.0 / 600);
+
+    // TODO: investigate whether this is worth doing on another thread
+    {
+      constexpr int buffer_size{10240}; // XXX: is that size enough?
+      char buffer[buffer_size];
+      int send_size;
+
+      send_size = serialize_world(world, buffer, buffer_size);
+      switch (send_size) {
+        case -1: ImGui::Text("Something wrong serializing world"); break;
+        case 0: ImGui::Text("Zero size data serializing world"); break;
+        default: socket_send(socket, buffer, send_size);
+      }
+
+      constexpr int send_geometry_every{120};
+      if (send_geometry++ % send_geometry_every == 0) {
+        auto field = world_get_field(world);
+        send_size = serialize_field(field, buffer, buffer_size);
+        switch (send_size) {
+          case -1: ImGui::Text("Something wrong serializing field"); break;
+          case 0: ImGui::Text("Zero size data serializing field"); break;
+          default: socket_send(socket, buffer, send_size);
+        }
+      }
+    }
 
     // 1. Show a simple window
     // Tip: if we don't call ImGui::Begin()/ImGui::End() the widgets appears in
@@ -559,6 +592,8 @@ int main(int, char **) {
     glfwSwapBuffers(window);
     gui_sync();
   }
+
+  delete_socket(socket);
 
   // Cleanup
   ImGui::Shutdown();

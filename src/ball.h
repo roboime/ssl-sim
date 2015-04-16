@@ -15,27 +15,27 @@ extern "C" {
 
 #include "vector.h"
 
-struct Vec3 ball_get_vec(struct Ball *ball);
+struct Vec3 ball_get_vec(const struct Ball *ball);
 void ball_set_vec(struct Ball *ball, const struct Vec2 vec);
 
-struct Pos3 ball_get_pos(struct Ball *ball);
+struct Pos3 ball_get_pos(const struct Ball *ball);
 void ball_set_pos(struct Ball *ball, const struct Pos3 pos);
 
-struct Pos3 ball_get_vel(struct Ball *ball);
+struct Pos3 ball_get_vel(const struct Ball *ball);
 void ball_set_vel(struct Ball *ball, const struct Pos3 vel);
 
 // TODO: ergonomic functions for kicks and dribbles
 
 /// return is C bool (1 for true, 0 for false)
-int ball_is_touching_robot(struct Ball *ball, struct Robot *robot);
+int ball_is_touching_robot(const struct Ball *ball, const struct Robot *robot);
 
 struct Robot *ball_last_touching_robot(struct Ball *ball);
 
 /// fast squared speed (magnitude of velocity)
-Float ball_get_speed2(struct Ball *ball);
+Float ball_get_speed2(const struct Ball *ball);
 
 /// fast squared speed (magnitude of velocity)
-Float ball_get_peak_speed2_from_last_kick(struct Ball *ball);
+Float ball_get_peak_speed2_from_last_kick(const struct Ball *ball);
 
 struct btRigidBody *ball_bt_rigid_body(struct Ball *ball);
 

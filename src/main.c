@@ -13,8 +13,11 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdbool.h>
+#include <time.h>
 
 #include "sslsim.h"
+#include "serialize.h"
+#include "utils/net.h"
 
 //
 // How To Scale The World
@@ -36,11 +39,15 @@
 //
 
 bool keep_going = true;
-void sigint_handler(int sig);
+void sigint_handler(int sig) {
+  fprintf(stderr, "\rCtrl+C pressed, closing...\n");
+  keep_going = false;
+}
 
 // int main(int argc, char *argv[]) {
 int main(void) {
-  printf("Hello World!\n");
+  const char *title = "Small Size League Simulator by RoboIME";
+  puts(title);
 
   {
     // Handle SIGINT (Ctrl+C)
@@ -54,25 +61,44 @@ int main(void) {
   // Create a world
   struct World *world = new_world(&FIELD_2015);
 
-  // Step the world a few times
-  for (int i = 0; i < 30; i++) {
-    world_step(world, 1.0 / 60, 10, 1.0 / 600);
-    struct Ball *ball = world_get_ball(world);
-    struct Vec3 vec = ball_get_vec(ball);
-    printf("ball: (%f, %f, %f)\n", vec.x, vec.y, vec.z);
+  // Add some robots
+  for (int i = 0; i < 6; i++) {
+    world_add_robot(world, i, TEAM_BLUE);
+    world_add_robot(world, i, TEAM_YELLOW);
   }
 
-  // while (keep_going) {
-  //}
+  // Create and bind socket
+  struct Socket *socket = new_socket(11002, "224.5.23.2");
+  socket_sender_bind(socket);
+
+#define BUFFER_SIZE 10240
+  char buffer[BUFFER_SIZE];
+  int send_size;
+  int send_geometry = 0;
+
+  while (keep_going) {
+    world_step(world, 1.0 / 60, 10, 1.0 / 600);
+
+    // TODO: log errors
+    send_size = serialize_world(world, buffer, BUFFER_SIZE);
+    if (send_size > 0)
+      socket_send(socket, buffer, send_size);
+
+    if (send_geometry++ % 120 == 0) {
+      send_size = serialize_field(world_get_field(world), buffer, BUFFER_SIZE);
+      if (send_size > 0)
+        socket_send(socket, buffer, send_size);
+    }
+
+    // TODO: realtime update
+    // sleep for 16ms, prevents going too fast and intensive
+    nanosleep(&(struct timespec){.tv_nsec=16000000}, NULL);
+  }
 
   // Clean it
-  delete_world(world);
+  delete_socket(socket);
+  // FIXME: world is not freeing correctly:
+  //delete_world(world);
 
-  printf("Done.\n");
   return 0;
-}
-
-void sigint_handler(int sig) {
-  fprintf(stderr, "Aborting...\n");
-  keep_going = false;
 }

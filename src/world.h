@@ -27,11 +27,20 @@ void world_step(struct World *world, Float time_step, int max_substeps,
 
 const struct FieldGeometry *world_get_field(const struct World *world);
 
-struct Ball *world_get_ball(struct World *world);
+int world_ball_count(const struct World *world);
+const struct Ball *world_get_ball(const struct World *world, int index);
+const struct Ball *world_get_game_ball(const struct World *world);
+struct Ball *world_get_mut_ball(struct World *world, int index);
+struct Ball *world_get_mut_game_ball(struct World *world);
+// void world_add_ball(struct World *world);
 
-int world_robot_count(struct World *world);
-struct Robot *world_get_robot(struct World *world, int index);
+int world_robot_count(const struct World *world);
+const struct Robot *world_get_robot(const struct World *world, int index);
+struct Robot *world_get_mut_robot(struct World *world, int index);
 void world_add_robot(struct World *world, int id, enum Team team);
+
+unsigned int world_get_frame_number(const struct World *world);
+double world_get_timestamp(const struct World *world);
 
 struct btDiscreteDynamicsWorld *world_bt_dynamics(struct World *world);
 

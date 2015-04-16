@@ -63,9 +63,9 @@ public:
 #endif
 
   // capacity:
-  constexpr size_type size() noexcept { return count; }
-  constexpr size_type max_size() noexcept { return N; }
-  constexpr bool empty() noexcept { return count == 0; }
+  constexpr size_type size() const noexcept { return count; }
+  constexpr size_type max_size() const noexcept { return N; }
+  constexpr bool empty() const noexcept { return count == 0; }
 
   // element access:
   reference operator[](size_type n) { return elems[n]; }

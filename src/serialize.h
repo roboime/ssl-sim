@@ -6,14 +6,17 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-#ifndef TEAM_H
-#define TEAM_H
+#ifndef SERIALIZE_H
+#define SERIALIZE_H
 #ifdef __cplusplus
 extern "C" {
 #endif
 // -----------------------------------------------------------------------------
 
-enum Team { TEAM_NONE = -1, TEAM_BLUE = 0, TEAM_YELLOW = 1 };
+// -1 on error or the size written
+int serialize_world(const struct World *world, char *buffer, int buffer_size);
+int serialize_field(const struct FieldGeometry *field, char *buffer,
+                    int buffer_size);
 
 // -----------------------------------------------------------------------------
 #ifdef __cplusplus

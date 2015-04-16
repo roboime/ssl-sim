@@ -55,13 +55,27 @@ add_library(sslsim
     src/sslsim.h
     src/sslsim.cpp
 )
-
 target_link_libraries(sslsim ${BULLET_LIBRARIES})
+
+add_library(sslsim_common
+    src/serialize.h
+    src/serialize.cpp
+
+    src/utils/net.h
+    src/utils/net.c
+    src/utils/stack_vector.h
+
+    # protobuf
+    ${PROTO_CPP}
+    ${PROTO_H}
+)
+target_link_libraries(sslsim_common ${PROTOBUF_LIBRARIES})
+
 
 if(BUILD_CLI)
     set(cli_app ssl-sim-cli)
     add_executable(${cli_app} src/main.c)
-    target_link_libraries(${cli_app} sslsim)
+    target_link_libraries(${cli_app} sslsim sslsim_common)
 endif()
 
 if(BUILD_GUI)
@@ -81,13 +95,6 @@ if(BUILD_GUI)
         # utils
         src/utils/colors.h
         src/utils/gl.h
-        src/utils/net.c
-        src/utils/net.h
-        src/utils/stack_vector.h
-
-        # protobuf
-        ${PROTO_CPP}
-        ${PROTO_H}
 
         # imgui
         imgui/imconfig.h
@@ -98,7 +105,7 @@ if(BUILD_GUI)
         imgui/stb_truetype.h
     )
     target_link_libraries(${gui_app} sslsim
-        ${PROTOBUF_LIBRARIES}
+        sslsim_common
         ${BULLET_DYNAMICS_LIBRARY}
         ${BULLET_COLLISION_LIBRARY}
         ${BULLET_MATH_LIBRARY}

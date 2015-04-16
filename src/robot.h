@@ -16,20 +16,21 @@ extern "C" {
 #include "vector.h"
 #include "team.h"
 
-int get_id(struct Robot *robot);
-enum Team get_team(struct Robot *robot);
+int get_id(const struct Robot *robot);
+enum Team get_team(const struct Robot *robot);
 
-struct Pos2 robot_get_pos(struct Robot *robot);
+struct Pos2 robot_get_pos(const struct Robot *robot);
 void robot_set_pos(struct Robot *robot, const struct Pos2 pos);
 
-struct Pos2 robot_get_vel(struct Robot *robot);
+struct Pos2 robot_get_vel(const struct Robot *robot);
 void robot_set_vel(struct Robot *robot, const struct Pos2 vel);
 
 /// return is C bool (1 for true, 0 for false)
-int robot_is_touching_robot(struct Robot *robot, struct Robot *tobor);
+int robot_is_touching_robot(const struct Robot *robot,
+                            const struct Robot *tobor);
 
 /// fast squared speed (magnitude of velocity)
-Float robot_get_speed2(struct Robot *robot);
+Float robot_get_speed2(const struct Robot *robot);
 
 // -----------------------------------------------------------------------------
 #ifdef __cplusplus
