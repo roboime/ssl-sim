@@ -7,8 +7,7 @@
  */
 
 #include "draw.h"
-#include "world.h"
-#include "field.h"
+#include "sslsim.h"
 
 #include <GLFW/glfw3.h>
 #include <btBulletDynamicsCommon.h>
@@ -16,10 +15,11 @@
 
 #include "utils/gl.h"
 #include "utils/colors.h"
+#include "utils/angle.hh"
 
-// Utils
-template <typename T> constexpr T RAD(T D) { return M_PI * D / 180.; }
-template <typename T> constexpr T DEG(T R) { return 180. * R / M_PI; }
+// Options
+static bool should_draw_objects{true};
+static bool should_draw_field{true};
 
 struct DebugDrawer : public btIDebugDraw {
   DebugDrawer() {}
@@ -112,7 +112,7 @@ struct DebugDrawer : public btIDebugDraw {
   }
 #endif
 
-  int debug_mode{1};
+  int debug_mode{0};
   virtual void setDebugMode(int mode) { debug_mode = mode; }
   virtual int getDebugMode() const { return debug_mode; }
   inline void setSingleDebugMode(DebugDrawModes mode, bool on) {
@@ -268,7 +268,7 @@ void draw_field(bool depth = false) {
 
   // center circle
   constexpr int CSIDES{60};
-  glBegin(GL_TRIANGLE_STRIP);
+  glBegin(GL_QUAD_STRIP);
   for (int i = 0; i <= CSIDES; i++) {
     float a = RAD(i * 360.0 / CSIDES);
     float r1 = f.center_circle_radius - f.line_width;
@@ -280,7 +280,7 @@ void draw_field(bool depth = false) {
 
   // defense areas
   constexpr int DSIDES{15};
-  glBegin(GL_TRIANGLE_STRIP);
+  glBegin(GL_QUAD_STRIP);
   for (int i = -DSIDES; i <= 0; i++) {
     float a = RAD(i * 90.0 / DSIDES);
     float r1 = f.defense_radius - f.line_width;
@@ -298,7 +298,7 @@ void draw_field(bool depth = false) {
     glVertex2f(-f.field_length / 2 + r2 * cos(a), yoff + r2 * sin(a));
   }
   glEnd();
-  glBegin(GL_TRIANGLE_STRIP);
+  glBegin(GL_QUAD_STRIP);
   for (int i = -DSIDES; i <= 0; i++) {
     float a = RAD(i * 90.0 / DSIDES);
     float r1 = f.defense_radius - f.line_width;
@@ -455,11 +455,102 @@ void draw_physics_world(void) {
 }
 #endif
 
+void draw_ball(const Ball *ball) {
+  // TODO: improve this sphere drawing algorithm
+  // maybe: http://stackoverflow.com/questions/7687148/drawing-sphere-in-opengl-without-using-glusphere
+
+  Vec3 vec = ball_get_vec(ball);
+  float x = vec.x;
+  float y = vec.y;
+  float z = vec.z;
+  // TODO: unify ball radius
+  float r = 0.043 / 2;
+
+  constexpr int LAT_DIVS{30};
+  constexpr int LON_DIVS{30};
+  constexpr float LAT_STEP = RAD(180.0 / LAT_DIVS);
+  constexpr float LON_STEP = RAD(360.0 / LON_DIVS);
+
+  glColor3ubv(ORANGE);
+  for (int ilat = 0; ilat < LAT_DIVS; ilat++) {
+    float lat_c = ilat * LAT_STEP;
+    float lat_n = lat_c + LAT_STEP;
+
+    glBegin(GL_TRIANGLE_STRIP);
+    for (int ilon = 0; ilon <= LON_DIVS; ilon++) {
+      float lon = ilon * LON_STEP;
+
+      float x1 = x + r * sin(lat_c) * cos(lon);
+      float y1 = y + r * sin(lat_c) * sin(lon);
+      float z1 = z + r * cos(lat_c);
+      float x2 = x + r * sin(lat_n) * cos(lon);
+      float y2 = y + r * sin(lat_n) * sin(lon);
+      float z2 = z + r * cos(lat_n);
+
+      glVertex3f(x1, y1, z1);
+      glVertex3f(x2, y2, z2);
+    }
+    glEnd();
+  }
+}
+
+void draw_robot(const Robot *robot) {
+  Pos2 pos = robot_get_pos(robot);
+  float x = pos.x;
+  float y = pos.y;
+  // XXX: I think there's something wrong with angles, compare with wireframe
+  float w = pos.w;
+  // TODO: unify robot radius/height
+  float r = 0.180 / 2;
+  float h = 0.150;
+  constexpr float m = RAD(90.0); // mouth angle
+  constexpr int DIVS{30};
+  constexpr float STEP = (RAD(360.0) - m) / DIVS;
+  float w0 = w - m / 2;
+
+  // TODO: draw pattern instead of plain color
+  switch (get_team(robot)) {
+    case TEAM_BLUE: glColor3ubv(BLUE); break;
+    case TEAM_YELLOW: glColor3ubv(YELLOW); break;
+    case TEAM_NONE: glColor3ubv(GREY); break;
+  }
+
+  // TODO: validate, not sure if it's right
+  glBegin(GL_TRIANGLE_FAN);
+  for (int i = 0; i <= DIVS; i++) {
+    float a = w - m / 2 + i * STEP;
+    glVertex3f(x + cos(a) * r, y + sin(a) * r, h);
+  }
+  glEnd();
+
+  glColor3ubv(GREY);
+  glBegin(GL_QUAD_STRIP);
+  for (int i = 0; i <= DIVS; i++) {
+    float a = w0 + i * STEP;
+    glVertex3f(x + cos(a) * r, y + sin(a) * r, 0);
+    glVertex3f(x + cos(a) * r, y + sin(a) * r, h);
+  }
+  glVertex3f(x + cos(w0) * r, y + sin(w0) * r, 0);
+  glVertex3f(x + cos(w0) * r, y + sin(w0) * r, h);
+  glEnd();
+}
+
+void draw_world_objects(void) {
+  int ball_count = world_ball_count(world);
+  for (int i = 0; i < ball_count; i++)
+    draw_ball(world_get_ball(world, i));
+
+  int robot_count = world_robot_count(world);
+  for (int i = 0; i < robot_count; i++)
+    draw_robot(world_get_robot(world, i));
+}
+
 void draw_world(void) {
   draw_update_camera();
-  draw_field();
-  // draw_physics_world();
-  // draw_physics_world_pass(2);
+  if (should_draw_field)
+    draw_field();
+  if (should_draw_objects)
+    draw_world_objects();
 }
 
 void draw_debug(void) { dynamics->debugDrawWorld(); }
@@ -468,6 +559,8 @@ void draw_set_debug_mode(int mode) { debug_drawer.setDebugMode(mode); }
 
 void draw_options_window(void) {
   ImGui::Begin("Draw options");
+  ImGui::Checkbox("draw field", &should_draw_field);
+  ImGui::Checkbox("draw objects", &should_draw_objects);
 #define ADD_DBG_OPT(OPT, DESC)                                                 \
   bool _##OPT = debug_drawer.getSingleDebugMode(DebugDrawer::OPT);             \
   ImGui::Checkbox(DESC, &_##OPT);                                              \
@@ -475,7 +568,7 @@ void draw_options_window(void) {
   ADD_DBG_OPT(DBG_DrawWireframe, "draw wireframe");
   ADD_DBG_OPT(DBG_DrawAabb, "draw AABB");
   ADD_DBG_OPT(DBG_DrawFeaturesText, "draw features text");
-  ADD_DBG_OPT(DBG_DrawContactPoints, "draw contact pooints");
+  ADD_DBG_OPT(DBG_DrawContactPoints, "draw contact points");
   ADD_DBG_OPT(DBG_NoDeactivation, "no deactivation");
   ADD_DBG_OPT(DBG_NoHelpText, "no help text");
   ADD_DBG_OPT(DBG_DrawText, "draw text");

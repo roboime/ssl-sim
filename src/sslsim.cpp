@@ -11,6 +11,7 @@
 #include <random>
 #include <btBulletDynamicsCommon.h>
 #include "utils/stack_vector.h"
+#include "utils/angle.hh"
 
 // physics units are meters and kilograms
 constexpr btScalar BALL_DIAM = 0.043;    // 43mm
@@ -30,7 +31,7 @@ static Pos2 random_robot_pos2(const FieldGeometry *f) {
       f->field_length / 2 + ROBOT_DIAM / 2);
   std::uniform_real_distribution<Float> ry(-f->field_width / 2 + ROBOT_DIAM / 2,
                                            f->field_width / 2 + ROBOT_DIAM / 2);
-  std::uniform_real_distribution<Float> rw(0, 360);
+  std::uniform_real_distribution<Float> rw(-RAD(180), RAD(180));
   // return std::forward(rx(gen), ry(gen), rw(gen));
   return {rx(gen), ry(gen), rw(gen)};
 }
@@ -302,9 +303,9 @@ Pos2 robot_get_pos(const Robot *robot) {
   auto trans = robot->body.getWorldTransform();
   auto orig = trans.getOrigin();
   auto rot = trans.getRotation();
-  // XXX: rot.getW() will get the rotation in respect to the quaternion axis,
+  // XXX: rot.getAngle() will get the rotation in respect to the quaternion axis,
   // the correct way would be to project it to {0, 0, 1}
-  return {orig.getX(), orig.getY(), rot.getW()};
+  return {orig.getX(), orig.getY(), rot.getAngle()};
 }
 
 void robot_set_pos(Robot *robot, const Pos2 pos) {
