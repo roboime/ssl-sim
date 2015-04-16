@@ -6,16 +6,20 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-#ifndef UTILS_STACK_VECTOR_H_
-#define UTILS_STACK_VECTOR_H_
+#ifndef UTILS_STACK_VECTOR_HH_
+#define UTILS_STACK_VECTOR_HH_
 
 #include <cstdlib>
 #include <utility>
 #include <initializer_list>
 
-// XXX: I know I shouldn't, but I can, so I did it
-namespace std {
+namespace utils {
+using std::declval;
+using std::ptrdiff_t;
+using std::initializer_list;
+using std::forward;
 
+//template <class T, size_t N> class stack_vector {
 template <class T, size_t N> class stack_vector {
   size_t count = {0};
   T elems[N] = {};

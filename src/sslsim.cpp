@@ -10,7 +10,7 @@
 
 #include <random>
 #include <btBulletDynamicsCommon.h>
-#include "utils/stack_vector.h"
+#include "utils/stack_vector.hh"
 #include "utils/angle.hh"
 
 // physics units are meters and kilograms
@@ -60,8 +60,10 @@ struct Ball {
   }
 };
 
+extern "C++" {
 BallCI::Shape BallCI::shape{};
 const BallCI Ball::ci{};
+}
 
 struct RobotCI : public btRigidBodyCI {
   static struct Shape : public btCylinderShapeZ {
@@ -92,8 +94,10 @@ struct Robot {
   Robot(void) : Robot(-1, TEAM_NONE) {}
 };
 
+extern "C++" {
 RobotCI::Shape RobotCI::shape{};
 const RobotCI Robot::ci{};
+}
 
 // const btRigidBodyCI body_ci{0, &motion_state, &shape, {0, 0, 0}};
 struct PlaneCI : public btRigidBodyCI {
@@ -134,8 +138,8 @@ struct World {
   // XXX: these don't work, so I made my own vector with stack allocation
   // btAlignedObjectArray<Robot> robots{};
   // btAlignedObjectArray<Ball> balls{};
-  std::stack_vector<Ball, 20> balls{};
-  std::stack_vector<Robot, 100> robots{};
+  utils::stack_vector<Ball, 20> balls{};
+  utils::stack_vector<Robot, 100> robots{};
 
   // the ground
   WorldBox world_box;

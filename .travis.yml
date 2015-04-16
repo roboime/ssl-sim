@@ -1,24 +1,19 @@
 language: cpp
 compiler:
-  - gcc
   - clang
+  #- gcc #XXX: there's a bug on gcc
 before_install:
-  - sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
-  - sudo add-apt-repository -y ppa:kalakris/cmake
+  - sudo apt-add-repository ppa:keithw/glfw3
   - sudo apt-get update -qq
 install:
-  # See issue travis-ci/travis-ci#1379
-  - 'if [ "$CXX" = "g++" ]; then sudo apt-get install -qq g++-4.8; export CXX="g++-4.8" CC="gcc-4.8"; else export CC=clang CXX=clang++; fi'
   # CMake
   - sudo apt-get install -qq cmake
   # Google Protobuf
   - sudo apt-get install -qq protobuf-compiler libprotobuf-dev
   # GLFW
-  - sudo apt-get install -qq xorg-dev libglew-dev
-  - wget https://github.com/glfw/glfw/archive/3.1.tar.gz && tar xzf 3.1.tar.gz
-  - cd glfw-3.1 && cmake . && make && sudo make install && cd ..
+  - sudo apt-get install -qq libglfw3-dev
   # Bullet
-  - wget https://bullet.googlecode.com/files/bullet-2.82-r2704.tgz && tar xzf bullet-2.82-r2704.tgz
-  - cd bullet-2.82-r2704 && mkdir bullet-build && cd bullet-build && cmake .. -G "Unix Makefiles" -DINSTALL_LIBS=ON -DBUILD_DEMOS=OFF -DBUILD_EXTRAS=OFF -DUSE_GLUT=OFF && make -j8 && sudo make install && cd ../..
+  - sudo apt-get install -qq libbullet-dev
 script:
   - mkdir build && cd build && cmake .. -G "Unix Makefiles" && make -j8
+  #TODO: simple tests maybe?

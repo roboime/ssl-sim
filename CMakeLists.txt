@@ -15,16 +15,17 @@ standard_config()
 #standard_paths(${PROJECT_SOURCE_DIR} bin lib)
 standard_paths(${PROJECT_BINARY_DIR} bin lib)
 
-require_cxx14()
+#require_cxx14()
+require_cxx11()
 require_c11()
 
 # enable clang-color with ninja
 if("${CMAKE_GENERATOR}" STREQUAL "Ninja" AND "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
     add_definitions("-Xclang -fcolor-diagnostics")
 endif()
-if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
-    add_definitions("-D_GNU_SOURCE")
-endif()
+
+# TODO: think of Windows/MSVC...
+add_definitions("-D_GNU_SOURCE")
 
 # Bullet
 find_package(Bullet REQUIRED)
@@ -63,7 +64,7 @@ add_library(sslsim_common
 
     src/utils/net.h
     src/utils/net.c
-    src/utils/stack_vector.h
+    src/utils/stack_vector.hh
 
     # protobuf
     ${PROTO_CPP}
