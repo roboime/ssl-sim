@@ -99,7 +99,6 @@ RobotCI::Shape RobotCI::shape{};
 const RobotCI Robot::ci{};
 }
 
-// const btRigidBodyCI body_ci{0, &motion_state, &shape, {0, 0, 0}};
 struct PlaneCI : public btRigidBodyCI {
   btStaticPlaneShape shape;
   PlaneCI(btVector3 plane_normal, btScalar plane_constant)
@@ -109,40 +108,79 @@ struct PlaneCI : public btRigidBodyCI {
   }
 };
 
-struct WorldBox {
-  PlaneCI ground_ci;
-  PlaneCI ceil_ci;
-  PlaneCI left_wall_ci;
-  PlaneCI right_wall_ci;
-  PlaneCI top_wall_ci;
-  PlaneCI bottom_wall_ci;
+struct GoalCI : public btRigidBodyCI {
+  btBoxShape wall_side, wall_rear;
+  btCompoundShape goal_shape;
+  GoalCI(btScalar goal_width, btScalar goal_depth, btScalar goal_height,
+         btScalar wall_width)
+      : btRigidBodyCI(0, nullptr, &goal_shape, {0, 0, 0}),
+        wall_side{
+            {goal_depth / 2 + wall_width / 2, wall_width / 2, goal_height / 2}},
+        wall_rear{{wall_width / 2, goal_width / 2, goal_height / 2}},
+        goal_shape{} {
+    goal_shape.addChildShape(
+        btTransform({0, 0, 0, 1},
+                    {-goal_depth / 2 - wall_width / 2,
+                     -goal_width / 2 - wall_width / 2, goal_height / 2}),
+        &wall_side);
+    goal_shape.addChildShape(
+        btTransform({0, 0, 0, 1},
+                    {-goal_depth / 2 - wall_width / 2,
+                     +goal_width / 2 + wall_width / 2, goal_height / 2}),
+        &wall_side);
+    goal_shape.addChildShape(
+        btTransform({0, 0, 0, 1},
+                    {-goal_depth - wall_width / 2, 0, goal_height / 2}),
+        &wall_rear);
+  }
+};
+
+struct Field {
+  const PlaneCI ground_ci;
+  const PlaneCI ceil_ci;
+  const PlaneCI left_wall_ci;
+  const PlaneCI right_wall_ci;
+  const PlaneCI top_wall_ci;
+  const PlaneCI bottom_wall_ci;
+  const GoalCI goal_ci;
   btRigidBody ground_body;
   btRigidBody ceil_body;
   btRigidBody left_wall_body;
   btRigidBody right_wall_body;
   btRigidBody top_wall_body;
   btRigidBody bottom_wall_body;
-  WorldBox(const FieldGeometry *field)
+  btRigidBody left_goal_body;
+  btRigidBody right_goal_body;
+  Field(const FieldGeometry *f)
       : ground_ci{{0, 0, 1}, 0.0}, ceil_ci{{0, 0, -1}, -10.0},
-        left_wall_ci{{1, 0, 0}, -field_limit_x(field)},
-        right_wall_ci{{-1, 0, 0}, -field_limit_x(field)},
-        top_wall_ci{{0, 1, 0}, -field_limit_y(field)},
-        bottom_wall_ci{{0, -1, 0}, -field_limit_y(field)},
+        left_wall_ci{{1, 0, 0}, -field_limit_x(f)},
+        right_wall_ci{{-1, 0, 0}, -field_limit_x(f)},
+        top_wall_ci{{0, 1, 0}, -field_limit_y(f)},
+        bottom_wall_ci{{0, -1, 0}, -field_limit_y(f)},
+        goal_ci{f->goal_width, f->goal_depth, f->goal_height,
+                f->goal_wall_width},
         ground_body{ground_ci}, ceil_body{ceil_ci},
         left_wall_body{left_wall_ci}, right_wall_body{right_wall_ci},
-        top_wall_body{top_wall_ci}, bottom_wall_body{bottom_wall_ci} {}
+        top_wall_body{top_wall_ci}, bottom_wall_body{bottom_wall_ci},
+        left_goal_body{goal_ci}, right_goal_body{goal_ci} {
+    auto trans1 = btTransform({0, 0, 0, 1}, {-f->field_length / 2, 0, 0});
+    left_goal_body.setWorldTransform(trans1);
+    auto trans2 = btTransform({0, 0, 1, 0}, {f->field_length / 2, 0, 0});
+    right_goal_body.setWorldTransform(trans2);
+  }
 };
 
 struct World {
-  const FieldGeometry *const field;
+  const FieldGeometry *const field_geometry;
+
+  // the field (bounding box and goals)
+  Field field;
+
   // XXX: these don't work, so I made my own vector with stack allocation
   // btAlignedObjectArray<Robot> robots{};
   // btAlignedObjectArray<Ball> balls{};
   utils::stack_vector<Ball, 20> balls{};
   utils::stack_vector<Robot, 100> robots{};
-
-  // the ground
-  WorldBox world_box;
 
   // TODO: findout what can be static, maybe?
 
@@ -165,22 +203,32 @@ struct World {
   btDiscreteDynamicsWorld dynamics{&dispatcher, &broadphase, &solver,
                                    &collision_configuration};
 
-  World(const FieldGeometry *const field_) : field{field_}, world_box{field_} {
+  World(const FieldGeometry *const field_geom)
+      : field_geometry{field_geom}, field{field_geom} {
     dynamics.setGravity({0, 0, -9.80665});
-    dynamics.addRigidBody(&world_box.ground_body);
-    dynamics.addRigidBody(&world_box.ceil_body);
-    dynamics.addRigidBody(&world_box.left_wall_body);
-    dynamics.addRigidBody(&world_box.right_wall_body);
-    dynamics.addRigidBody(&world_box.top_wall_body);
-    dynamics.addRigidBody(&world_box.bottom_wall_body);
+    dynamics.addRigidBody(&field.ground_body);
+    dynamics.addRigidBody(&field.ceil_body);
+    dynamics.addRigidBody(&field.left_wall_body);
+    dynamics.addRigidBody(&field.right_wall_body);
+    dynamics.addRigidBody(&field.top_wall_body);
+    dynamics.addRigidBody(&field.bottom_wall_body);
+    dynamics.addRigidBody(&field.left_goal_body);
+    dynamics.addRigidBody(&field.right_goal_body);
     balls.emplace_back();
     dynamics.addRigidBody(&balls.back().body);
     ball_set_vec(&balls.back(), {});
   }
 
   World(const World *w)
-      : field{w->field}, balls{w->balls}, robots{w->robots},
-        world_box{w->world_box}, broadphase{},
+      : field_geometry{w->field_geometry},
+        //
+        field{w->field},
+        //
+        balls{w->balls},
+        //
+        robots{w->robots},
+        //
+        broadphase{},
         // broadphase{w->broadphase},
         collision_configuration{w->collision_configuration},
         // dispatcher{w->dispatcher},
@@ -197,17 +245,21 @@ struct World {
       dynamics.removeRigidBody(&robot.body);
     for (auto &ball : balls)
       dynamics.removeRigidBody(&ball.body);
-    dynamics.removeRigidBody(&world_box.ground_body);
-    dynamics.removeRigidBody(&world_box.ceil_body);
-    dynamics.removeRigidBody(&world_box.left_wall_body);
-    dynamics.removeRigidBody(&world_box.right_wall_body);
-    dynamics.removeRigidBody(&world_box.top_wall_body);
-    dynamics.removeRigidBody(&world_box.bottom_wall_body);
+    dynamics.removeRigidBody(&field.ground_body);
+    dynamics.removeRigidBody(&field.ceil_body);
+    dynamics.removeRigidBody(&field.left_wall_body);
+    dynamics.removeRigidBody(&field.right_wall_body);
+    dynamics.removeRigidBody(&field.top_wall_body);
+    dynamics.removeRigidBody(&field.bottom_wall_body);
+    dynamics.removeRigidBody(&field.left_goal_body);
+    dynamics.removeRigidBody(&field.right_goal_body);
   }
 };
 
 // world.h impl
-World *new_world(const FieldGeometry *field) { return new World{field}; }
+World *new_world(const FieldGeometry *field_geom) {
+  return new World{field_geom};
+}
 World *clone_world(const World *world) { return new World{world}; }
 void delete_world(World *world) { delete world; }
 
@@ -219,7 +271,7 @@ void world_step(struct World *world, Float time_step, int max_substeps,
 }
 
 const FieldGeometry *world_get_field(const World *world) {
-  return world->field;
+  return world->field_geometry;
 }
 
 int world_ball_count(const World *world) { return world->balls.size(); }
@@ -251,7 +303,8 @@ Robot *world_get_mut_robot(World *world, int index) {
 void world_add_robot(World *world, int id, Team team) {
   world->robots.emplace_back(id, team);
   world->dynamics.addRigidBody(&world->robots.back().body);
-  robot_set_pos(&world->robots.back(), random_robot_pos2(world->field));
+  robot_set_pos(&world->robots.back(),
+                random_robot_pos2(world->field_geometry));
   // TODO: robot position
 }
 
