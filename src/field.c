@@ -22,7 +22,8 @@ const struct FieldGeometry FIELD_2014_SINGLE = {
   0.350, // defense_stretch;
   0.200, // free_kick_from_defense_dist;
   0.750, // penalty_spot_from_field_line_dist;
-  0.400  // penalty_line_from_spot_dist;
+  0.400, // penalty_line_from_spot_dist;
+  0.165  // goal_height;
 };
 
 const struct FieldGeometry FIELD_2014_DOUBLE = {
@@ -39,7 +40,8 @@ const struct FieldGeometry FIELD_2014_DOUBLE = {
   0.500, // defense_stretch;
   0.200, // free_kick_from_defense_dist;
   1.000, // penalty_spot_from_field_line_dist;
-  0.400  // penalty_line_from_spot_dist;
+  0.400, // penalty_line_from_spot_dist;
+  0.165  // goal_height;
 };
 
 const struct FieldGeometry FIELD_2015 = {
@@ -56,5 +58,6 @@ const struct FieldGeometry FIELD_2015 = {
   0.500, // defense_stretch;
   0.200, // free_kick_from_defense_dist;
   1.000, // penalty_spot_from_field_line_dist;
-  0.400  // penalty_line_from_spot_dist;
+  0.400, // penalty_line_from_spot_dist;
+  0.165  // goal_height;
 };

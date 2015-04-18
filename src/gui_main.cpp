@@ -440,11 +440,11 @@ void render() {
   glClearColor(clear_col.x, clear_col.y, clear_col.z, clear_col.w);
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+  draw_options_window();
   draw_world();
   if (screen_active)
     draw_mouse_projection(screen_button, screen_drag);
   draw_debug();
-  draw_options_window();
 
   glMatrixMode(GL_TEXTURE);
   glLoadIdentity();

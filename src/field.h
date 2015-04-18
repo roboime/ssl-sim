@@ -30,6 +30,7 @@ struct FieldGeometry {
   Float free_kick_from_defense_dist;
   Float penalty_spot_from_field_line_dist;
   Float penalty_line_from_spot_dist;
+  Float goal_height;
 };
 
 inline Float field_limit_x(const struct FieldGeometry *field) {

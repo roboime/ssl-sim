@@ -20,6 +20,19 @@
 // Options
 static bool should_draw_objects{true};
 static bool should_draw_field{true};
+static bool should_draw_lighting{true};
+
+#define LIGHTING_BEGIN                                                         \
+  if (should_draw_lighting) {                                                  \
+    glEnable(GL_LIGHTING);                                                     \
+    glEnable(GL_COLOR_MATERIAL);                                               \
+    glColorMaterial(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE);                \
+  }
+#define LIGHTING_END                                                           \
+  if (should_draw_lighting) {                                                  \
+    glDisable(GL_LIGHTING);                                                    \
+    glDisable(GL_COLOR_MATERIAL);                                              \
+  }
 
 struct DebugDrawer : public btIDebugDraw {
   DebugDrawer() {}
@@ -336,41 +349,66 @@ void draw_field(bool depth = false) {
   glEnd();
 
   // the goals
-  glRectf(-f.field_length / 2 - f.goal_depth - f.goal_wall_width,
-          -f.goal_width / 2 - f.goal_wall_width, -f.field_length / 2,
-          -f.goal_width / 2);
-  glRectf(-f.field_length / 2 - f.goal_depth - f.goal_wall_width,
-          f.goal_width / 2 + f.goal_wall_width, -f.field_length / 2,
-          f.goal_width / 2);
-  glRectf(-f.field_length / 2 - f.goal_depth - f.goal_wall_width,
-          -f.goal_width / 2 - f.goal_wall_width,
-          -f.field_length / 2 - f.goal_depth,
-          f.goal_width / 2 + f.goal_wall_width);
-  glRectf(f.field_length / 2 + f.goal_depth + f.goal_wall_width,
-          -f.goal_width / 2 - f.goal_wall_width, f.field_length / 2,
-          -f.goal_width / 2);
-  glRectf(f.field_length / 2 + f.goal_depth + f.goal_wall_width,
-          f.goal_width / 2 + f.goal_wall_width, f.field_length / 2,
-          f.goal_width / 2);
-  glRectf(f.field_length / 2 + f.goal_depth + f.goal_wall_width,
-          -f.goal_width / 2 - f.goal_wall_width,
-          f.field_length / 2 + f.goal_depth,
-          f.goal_width / 2 + f.goal_wall_width);
-
-#if 0
-  // x-axis
-  glColor3f(1.0, 1.0, 1.0);
-  glBegin(GL_LINES);
-  glVertex3f(-f.field_length / 2, 0.0, 0.0);
-  glVertex3f(f.field_length / 2, 0.0, 0.0);
+  //
+  // convinient x, y values:
+  //
+  //   c____d
+  //    |__ |
+  //   b a| |
+  // -----|-|---> x
+  //
+  float ax = f.field_length / 2 + f.goal_depth;
+  float ay = f.goal_width / 2;
+  float bx = f.field_length / 2;
+  float by = ay;
+  float cx = bx;
+  float cy = by + f.goal_wall_width;
+  float dx = ax + f.goal_wall_width;
+  float dy = cy;
+  float h = f.goal_height;
+#define glBar_(X, Y)                                                           \
+  glVertex3f(X, Y, 0.0);                                                       \
+  glVertex3f(X, Y, h)
+  glBegin(GL_QUAD_STRIP);
+  glBar_(-ax, -ay);
+  glBar_(-bx, -by);
+  glBar_(-cx, -cy);
+  glBar_(-dx, -dy);
+  glBar_(-dx, +dy);
+  glBar_(-cx, +cy);
+  glBar_(-bx, +by);
+  glBar_(-ax, +ay);
+  glBar_(-ax, -ay);
   glEnd();
-#endif
+  glBegin(GL_QUAD_STRIP);
+  glBar_(+ax, -ay);
+  glBar_(+bx, -by);
+  glBar_(+cx, -cy);
+  glBar_(+dx, -dy);
+  glBar_(+dx, +dy);
+  glBar_(+cx, +cy);
+  glBar_(+bx, +by);
+  glBar_(+ax, +ay);
+  glBar_(+ax, -ay);
+  glEnd();
+#undef glBar_
+  glPushMatrix();
+  glTranslatef(0, 0, h);
+  glRectf(-bx, -by, -dx, -dy);
+  glRectf(-dx, -dy, -ax, +dy);
+  glRectf(-bx, +by, -dx, +dy);
+  glRectf(+bx, -by, +dx, -dy);
+  glRectf(+dx, -dy, +ax, +dy);
+  glRectf(+bx, +by, +dx, +dy);
+  glPopMatrix();
 
   if (!depth)
     glEnable(GL_DEPTH_TEST);
 }
 
 void draw_mouse_projection(int button, bool drag) {
+  LIGHTING_BEGIN;
+
   auto ray_to = get_ray_to(screen_x, screen_y);
   auto plane_pos = get_plane_from_cam(ray_to);
   projected_mouse_x = plane_pos[0];
@@ -402,6 +440,8 @@ void draw_mouse_projection(int button, bool drag) {
   }
   glEnd();
   glDisable(GL_BLEND);
+
+  LIGHTING_END;
 }
 
 #if 0
@@ -457,7 +497,8 @@ void draw_physics_world(void) {
 
 void draw_ball(const Ball *ball) {
   // TODO: improve this sphere drawing algorithm
-  // maybe: http://stackoverflow.com/questions/7687148/drawing-sphere-in-opengl-without-using-glusphere
+  // maybe:
+  // http://stackoverflow.com/questions/7687148/drawing-sphere-in-opengl-without-using-glusphere
 
   Vec3 vec = ball_get_vec(ball);
   float x = vec.x;
@@ -510,9 +551,15 @@ void draw_robot(const Robot *robot) {
 
   // TODO: draw pattern instead of plain color
   switch (get_team(robot)) {
-    case TEAM_BLUE: glColor3ubv(BLUE); break;
-    case TEAM_YELLOW: glColor3ubv(YELLOW); break;
-    case TEAM_NONE: glColor3ubv(GREY); break;
+  case TEAM_BLUE:
+    glColor3ubv(BLUE);
+    break;
+  case TEAM_YELLOW:
+    glColor3ubv(YELLOW);
+    break;
+  case TEAM_NONE:
+    glColor3ubv(GREY);
+    break;
   }
 
   // TODO: validate, not sure if it's right
@@ -547,10 +594,62 @@ void draw_world_objects(void) {
 
 void draw_world(void) {
   draw_update_camera();
-  if (should_draw_field)
+
+  LIGHTING_BEGIN;
+
+#if 0
+  GLfloat specular[] = {1.0, 1.0, 1.0, 1.0};
+  glLightfv(GL_LIGHT0, GL_SPECULAR, specular);
+  GLfloat position[] = {-1.5, 1.0, 4.0, 1.0};
+  glLightfv(GL_LIGHT0, GL_POSITION, position);
+  glEnable(GL_LIGHT0);
+#endif
+
+  if (should_draw_lighting) {
+    glEnable(GL_LIGHT0);
+    glShadeModel(GL_SMOOTH);
+
+    // Create light components
+    static GLfloat ambientLight[] = {0.4, 0.4, 0.4, 1.0};
+    static GLfloat diffuseLight[] = {1.0, 1.0, 1.0, 1.0};
+    static GLfloat specularLight[] = {1.0, 1.0, 1.0, 1.0};
+    static GLfloat position[] = {0.0, 5.0, 3.0, 1.0};
+
+    // Assign created components to GL_LIGHT0
+    glLightfv(GL_LIGHT0, GL_AMBIENT, ambientLight);
+    glLightfv(GL_LIGHT0, GL_DIFFUSE, diffuseLight);
+    glLightfv(GL_LIGHT0, GL_SPECULAR, specularLight);
+    glLightfv(GL_LIGHT0, GL_POSITION, position);
+
+    // Evaluate the reflective properties of the material
+    static float colorBlue[] = {0.0, 0.0, 1.0, 1.0};
+    glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, colorBlue);
+    static float specReflection[] = {1.0, 1.0, 1.0, 1.0};
+    glMaterialfv(GL_FRONT, GL_SPECULAR, specReflection);
+    static int shininess = 127;
+    glMateriali(GL_FRONT, GL_SHININESS, shininess);
+
+    ImGui::Begin("Draw options");
+    if (ImGui::CollapsingHeader("Advanced lighting parametrs")) {
+      ImGui::ColorEdit4("Ambient light", ambientLight);
+      ImGui::ColorEdit4("Diffuse light", diffuseLight);
+      ImGui::ColorEdit4("Specular light", specularLight);
+      ImGui::SliderFloat4("Position", position, -10.0, 10.0);
+      ImGui::ColorEdit4("Specular reflection", specReflection);
+      ImGui::SliderInt("Shininess", &shininess, 0, 128);
+    }
+    ImGui::End();
+  }
+
+  if (should_draw_field) {
     draw_field();
-  if (should_draw_objects)
+  }
+
+  if (should_draw_objects) {
     draw_world_objects();
+  }
+
+  LIGHTING_END;
 }
 
 void draw_debug(void) { dynamics->debugDrawWorld(); }
@@ -561,26 +660,29 @@ void draw_options_window(void) {
   ImGui::Begin("Draw options");
   ImGui::Checkbox("draw field", &should_draw_field);
   ImGui::Checkbox("draw objects", &should_draw_objects);
+  ImGui::Checkbox("draw lighting", &should_draw_lighting);
+  if (ImGui::CollapsingHeader("Phyisics debugging")) {
 #define ADD_DBG_OPT(OPT, DESC)                                                 \
   bool _##OPT = debug_drawer.getSingleDebugMode(DebugDrawer::OPT);             \
   ImGui::Checkbox(DESC, &_##OPT);                                              \
   debug_drawer.setSingleDebugMode(DebugDrawer::OPT, _##OPT);
-  ADD_DBG_OPT(DBG_DrawWireframe, "draw wireframe");
-  ADD_DBG_OPT(DBG_DrawAabb, "draw AABB");
-  ADD_DBG_OPT(DBG_DrawFeaturesText, "draw features text");
-  ADD_DBG_OPT(DBG_DrawContactPoints, "draw contact points");
-  ADD_DBG_OPT(DBG_NoDeactivation, "no deactivation");
-  ADD_DBG_OPT(DBG_NoHelpText, "no help text");
-  ADD_DBG_OPT(DBG_DrawText, "draw text");
-  ADD_DBG_OPT(DBG_ProfileTimings, "profile timings");
-  ADD_DBG_OPT(DBG_EnableSatComparison, "enable sat compresion");
-  ADD_DBG_OPT(DBG_DisableBulletLCP, "disable bullet LCP");
-  ADD_DBG_OPT(DBG_EnableCCD, "enable CCD");
-  ADD_DBG_OPT(DBG_DrawConstraints, "draw constraints");
-  ADD_DBG_OPT(DBG_DrawConstraintLimits, "draw constraint limits");
-  ADD_DBG_OPT(DBG_FastWireframe, "fast wireframe");
-  ADD_DBG_OPT(DBG_DrawNormals, "draw normals");
+    ADD_DBG_OPT(DBG_DrawWireframe, "draw wireframe");
+    ADD_DBG_OPT(DBG_DrawAabb, "draw AABB");
+    ADD_DBG_OPT(DBG_DrawFeaturesText, "draw features text");
+    ADD_DBG_OPT(DBG_DrawContactPoints, "draw contact points");
+    ADD_DBG_OPT(DBG_NoDeactivation, "no deactivation");
+    ADD_DBG_OPT(DBG_NoHelpText, "no help text");
+    ADD_DBG_OPT(DBG_DrawText, "draw text");
+    ADD_DBG_OPT(DBG_ProfileTimings, "profile timings");
+    ADD_DBG_OPT(DBG_EnableSatComparison, "enable sat compresion");
+    ADD_DBG_OPT(DBG_DisableBulletLCP, "disable bullet LCP");
+    ADD_DBG_OPT(DBG_EnableCCD, "enable CCD");
+    ADD_DBG_OPT(DBG_DrawConstraints, "draw constraints");
+    ADD_DBG_OPT(DBG_DrawConstraintLimits, "draw constraint limits");
+    ADD_DBG_OPT(DBG_FastWireframe, "fast wireframe");
+    ADD_DBG_OPT(DBG_DrawNormals, "draw normals");
 #undef ADD_DBG_OPT
+  }
   ImGui::End();
 }
 

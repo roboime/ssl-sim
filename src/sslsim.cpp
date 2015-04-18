@@ -307,7 +307,8 @@ Pos2 robot_get_pos(const Robot *robot) {
   auto trans = robot->body.getWorldTransform();
   auto orig = trans.getOrigin();
   auto rot = trans.getRotation();
-  // XXX: rot.getAngle() will get the rotation in respect to the quaternion axis,
+  // XXX: rot.getAngle() will get the rotation in respect to the quaternion
+  // axis,
   // the correct way would be to project it to {0, 0, 1}
   return {orig.getX(), orig.getY(), rot.getAngle()};
 }
