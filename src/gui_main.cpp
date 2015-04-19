@@ -13,25 +13,30 @@
 #include <chrono>
 #include <thread>
 
+#if 1
 #define GLEW_STATIC
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
+#else
+#include <GL/glew.h>
+#define GLFW_DLL
+#include <GLFW/glfw3.h>
+#endif
 
-#include "imgui.h"
+#include <imgui.h>
 #include "sslsim.h"
 #include "draw.h"
 #include "serialize.h"
 #include "utils/colors.h"
 #include "utils/net.h"
+#include "utils/math.hh"
 
 #include <btBulletDynamicsCommon.h>
 
 static void error_callback(int error, const char *description) {
-  fprintf(stderr, "GLFW ERROR %i: %s", error, description);
+  fprintf(stderr, "GLFW ERROR %i: %s\n", error, description);
 }
 
-// glfw is C code, this global demoApplication links glfw to the C++ demo
-// static DemoApplication *demoApplication = nullptr;
 static World *world;
 static GLFWwindow *window = nullptr;
 static bool mousePressed[2] = {false, false};
@@ -44,7 +49,6 @@ void set_screen_button(int button) {
   if (!button)
     screen_drag = false;
 }
-template <typename T> constexpr T SQ(T X) { return X * X; }
 
 // static void mouse_button_callback(GLFWwindow *window, int button, int
 // action, int mods) {
@@ -72,10 +76,7 @@ static void mouse_button_callback(GLFWwindow *, int button, int action,
   }
 }
 
-// static void cursor_pos_callback(GLFWwindow *window, double xoffset, double
-// yoffset) {
 static void cursor_pos_callback(GLFWwindow *, double xpos, double ypos) {
-  // demoApplication->mouseMotionFunc(xoffset, yoffset);
   constexpr double MIN_DRAG_MOVE_2{3.0};
   if (screen_button && !screen_drag) {
     if (SQ(draw_screen_x - xpos) + SQ(draw_screen_y - ypos) > MIN_DRAG_MOVE_2) {
@@ -107,15 +108,7 @@ static void scroll_callback(GLFWwindow *, double, double yoffset) {
   io.MouseWheel += (float)yoffset;
 }
 
-static void key_callback(GLFWwindow *window, int key, int, int action,
-                         int mods) {
-
-  // Application
-  // double _x, _y;
-  // glfwGetCursorPos(window, &_x, &_y);
-  // int x(_x), y(_y);
-  // demoApplication->m_modifierKeys = mods;
-  // demoApplication->specialKeyboard(key, x, y);
+static void key_callback(GLFWwindow *window, int key, int, int action, int mods) {
 
   // Custom
   if (key == GLFW_KEY_ESCAPE && action == GLFW_RELEASE) {
@@ -463,15 +456,126 @@ void sigint_handler(int) {
   glfwSetWindowShouldClose(window, 1);
 }
 
-int main(int, char **) {
-  {
-    // Handle SIGINT (Ctrl+C)
-    struct sigaction sa;
-    sa.sa_handler = sigint_handler;
-    sigemptyset(&sa.sa_mask);
-    sa.sa_flags = 0;
-    sigaction(SIGINT, &sa, NULL);
+void sigint_handler_init(void) {
+  // Handle SIGINT (Ctrl+C)
+  struct sigaction sa;
+  sa.sa_handler = sigint_handler;
+  sigemptyset(&sa.sa_mask);
+  sa.sa_flags = 0;
+  sigaction(SIGINT, &sa, NULL);
+}
+
+void network_step(Socket *socket) {
+  constexpr int buffer_size{10240}; // XXX: is that size enough?
+  char buffer[buffer_size];
+  int send_size;
+  static int send_geometry{0};
+
+  send_size = serialize_world(world, buffer, buffer_size);
+  switch (send_size) {
+  case -1:
+    ImGui::Text("Something wrong serializing world");
+    break;
+  case 0:
+    ImGui::Text("Zero size data serializing world");
+    break;
+  default:
+    socket_send(socket, buffer, send_size);
   }
+
+  constexpr int send_geometry_every{120};
+  if (send_geometry++ % send_geometry_every == 0) {
+    auto field = world_get_field(world);
+    send_size = serialize_field(field, buffer, buffer_size);
+    switch (send_size) {
+    case -1:
+      ImGui::Text("Something wrong serializing field");
+      break;
+    case 0:
+      ImGui::Text("Zero size data serializing field");
+      break;
+    default:
+      socket_send(socket, buffer, send_size);
+    }
+  }
+}
+
+int main(int, char **) {
+  sigint_handler_init();
+
+  // GLFW init
+  glfwSetErrorCallback(error_callback);
+  if (!glfwInit()) {
+    fprintf(stderr, "Could not initialize GLFW.\n");
+    return EXIT_FAILURE;
+  }
+
+  // glfwWindowHint(GLFW_SAMPLES, 4);
+  glfwWindowHint(GLFW_SAMPLES, 16);
+
+  const char *title = "Small Size League Simulator by RoboIME";
+//#define FULLSCREEN_INIT
+#ifdef FULLSCREEN_INIT
+  {
+    GLFWmonitor *mon = glfwGetPrimaryMonitor();
+    const GLFWvidmode *vmode = glfwGetVideoMode(mon);
+    if (vmode == nullptr) {
+      fprintf(stderr, "Could not get video mode.\n");
+      return EXIT_FAILURE;
+    }
+    draw_screen_width = vmode->width;
+    draw_screen_height = vmode->height;
+    window = glfwCreateWindow(vmode->width, vmode->height, title, mon, NULL);
+  }
+#else
+  const int w{987}, h{610};
+  draw_screen_width = w;
+  draw_screen_height = h;
+  window = glfwCreateWindow(w, h, title, NULL, NULL);
+#endif
+  if (window == nullptr) {
+    fprintf(stderr, "Could not create GLFW window.\n");
+    glfwTerminate();
+    return EXIT_FAILURE;
+  }
+
+  // start GLEW extension handler
+  glewExperimental = GL_TRUE;
+  if (glewInit() != GLEW_OK) {
+    fprintf(stderr, "Could not load GLEW.\n");
+    glfwTerminate();
+    return EXIT_FAILURE;
+  }
+
+  glGetError(); // don't remove this call, it is needed for Ubuntu
+
+  // get version info
+  {
+    const GLubyte *renderer = glGetString(GL_RENDERER); // get renderer string
+    const GLubyte *version = glGetString(GL_VERSION);   // version as a string
+    printf("Renderer: %s\n", renderer);
+    printf("OpenGL version supported %s\n", version);
+  }
+
+  // Setup ImGui binding
+  init_imgui();
+
+  // my callbacks
+  glfwSetKeyCallback(window, key_callback);
+  glfwSetCharCallback(window, char_callback);
+  glfwSetMouseButtonCallback(window, mouse_button_callback);
+  glfwSetCursorPosCallback(window, cursor_pos_callback);
+  glfwSetCursorEnterCallback(window, cursor_enter_callback);
+  glfwSetScrollCallback(window, scroll_callback);
+  glfwSetWindowFocusCallback(window, window_focus_callback);
+  glfwSetWindowSizeCallback(window, window_size_callback);
+
+  // more options
+  glfwMakeContextCurrent(window);
+  glfwSwapInterval(1);
+
+  // bool show_test_window = true;
+  // bool show_another_window = false;
 
   // Create a world
   world = new_world(&FIELD_2015);
@@ -481,49 +585,6 @@ int main(int, char **) {
   auto socket = new_socket(11002, "224.5.23.2");
   socket_sender_bind(socket);
 
-  // int width, int height, const char *title,
-  // DemoApplication *demoApp) {
-  const int w{987}, h{610};
-  draw_screen_width = w;
-  draw_screen_height = h;
-  const char *title = "Small Size League Simulator by RoboIME";
-
-  if (!glfwInit())
-    return EXIT_FAILURE;
-
-  // GLFW init
-  glfwSetErrorCallback(error_callback);
-  glfwWindowHint(GLFW_SAMPLES, 4);
-
-  window = glfwCreateWindow(w, h, title, NULL, NULL);
-  if (window == nullptr) {
-    glfwTerminate();
-    return EXIT_FAILURE;
-  }
-
-  glewInit();
-
-  // callbacks
-  glfwSetKeyCallback(window, key_callback);
-  glfwSetCharCallback(window, char_callback);
-  glfwSetMouseButtonCallback(window, mouse_button_callback);
-  glfwSetCursorPosCallback(window, cursor_pos_callback);
-  glfwSetCursorEnterCallback(window, cursor_enter_callback);
-  glfwSetScrollCallback(window, scroll_callback);
-  // glfwSetWindowRefreshCallback(window, window_refresh_callback);
-  glfwSetWindowFocusCallback(window, window_focus_callback);
-  glfwSetWindowSizeCallback(window, window_size_callback);
-
-  init_imgui();
-
-  // more options
-  glfwMakeContextCurrent(window);
-  glfwSwapInterval(1);
-
-  // bool show_test_window = true;
-  // bool show_another_window = false;
-
-  int send_geometry{0};
   while (!glfwWindowShouldClose(window)) {
     // ImGuiIO &io = ImGui::GetIO();
     mousePressed[0] = mousePressed[1] = false;
@@ -534,81 +595,23 @@ int main(int, char **) {
     world_step(world, 1.0 / 60, 10, 1.0 / 600);
     // world_step(world, 1.0 / 300, 10, 1.0 / 600);
 
-    // TODO: investigate whether this is worth doing on another thread
-    {
-      constexpr int buffer_size{10240}; // XXX: is that size enough?
-      char buffer[buffer_size];
-      int send_size;
-
-      send_size = serialize_world(world, buffer, buffer_size);
-      switch (send_size) {
-      case -1:
-        ImGui::Text("Something wrong serializing world");
-        break;
-      case 0:
-        ImGui::Text("Zero size data serializing world");
-        break;
-      default:
-        socket_send(socket, buffer, send_size);
-      }
-
-      constexpr int send_geometry_every{120};
-      if (send_geometry++ % send_geometry_every == 0) {
-        auto field = world_get_field(world);
-        send_size = serialize_field(field, buffer, buffer_size);
-        switch (send_size) {
-        case -1:
-          ImGui::Text("Something wrong serializing field");
-          break;
-        case 0:
-          ImGui::Text("Zero size data serializing field");
-          break;
-        default:
-          socket_send(socket, buffer, send_size);
-        }
-      }
-    }
-
-    // 1. Show a simple window
-    // Tip: if we don't call ImGui::Begin()/ImGui::End() the widgets appears in
-    // a window automatically called "Debug"
-    {
-      // static float f;
-      // ImGui::Text("Hello, world!");
-      // ImGui::SliderFloat("float", &f, 0.0f, 1.0f);
-      // ImGui::ColorEdit3("clear color", (float*)&clear_col);
-      // if (ImGui::Button("Test Window"))
-      //  show_test_window ^= 1;
-      // if (ImGui::Button("Another Window")) show_another_window ^= 1;
-    }
-
-    // 2. Show another simple window, this time using an explicit Begin/End pair
-    // if (show_another_window) {
-    //  ImGui::Begin("Another Window", &show_another_window, ImVec2(200,100));
-    //  ImGui::Text("Hello");
-    //  ImGui::End();
-    //}
-
-    // 3. Show the ImGui test window. Most of the sample code is in
-    // ImGui::ShowTestWindow();
-    // if (show_test_window) {
-    //  ImGui::SetNextWindowPos(ImVec2(650, 20),
-    //  ImGuiSetCondition_FirstUseEver);
-    //  ImGui::ShowTestWindow(&show_test_window);
-    //}
-
     // Rendering
     render();
+
     glfwSwapBuffers(window);
     gui_sync();
+
+    // network step after rendering
+    // TODO: investigate whether this is worth doing on another thread
+    network_step(socket);
   }
 
   delete_socket(socket);
 
   // Cleanup
   ImGui::Shutdown();
-  glfwDestroyWindow(window);
   glfwTerminate();
 
+  printf("Bye.\n");
   return EXIT_SUCCESS;
 }

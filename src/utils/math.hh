@@ -6,10 +6,12 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-#ifndef UTILS_ANGLE_HH_
-#define UTILS_ANGLE_HH_
+#ifndef UTILS_MATH_HH_
+#define UTILS_MATH_HH_
 
+#include <cmath>
 template <typename T> constexpr T RAD(T D) { return M_PI * D / 180.; }
 template <typename T> constexpr T DEG(T R) { return 180. * R / M_PI; }
+template <typename T> constexpr T SQ(T X) { return X * X; }
 
 #endif

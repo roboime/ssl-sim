@@ -11,7 +11,7 @@
 #include <random>
 #include <btBulletDynamicsCommon.h>
 #include "utils/stack_vector.hh"
-#include "utils/angle.hh"
+#include "utils/math.hh"
 
 // physics units are meters and kilograms
 constexpr btScalar BALL_DIAM = 0.043;    // 43mm

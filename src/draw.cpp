@@ -9,13 +9,21 @@
 #include "draw.h"
 #include "sslsim.h"
 
+#if 1
+#define GLEW_STATIC
+#include <GL/glew.h>
 #include <GLFW/glfw3.h>
+#else
+#include <GL/glew.h>
+#define GLFW_DLL
+#include <GLFW/glfw3.h>
+#endif
 #include <btBulletDynamicsCommon.h>
 #include "imgui.h"
 
 #include "utils/gl.h"
 #include "utils/colors.h"
-#include "utils/angle.hh"
+#include "utils/math.hh"
 
 // Options
 static bool should_draw_objects{true};
@@ -661,7 +669,7 @@ void draw_options_window(void) {
   ImGui::Checkbox("draw field", &should_draw_field);
   ImGui::Checkbox("draw objects", &should_draw_objects);
   ImGui::Checkbox("draw lighting", &should_draw_lighting);
-  if (ImGui::CollapsingHeader("Phyisics debugging")) {
+  if (ImGui::CollapsingHeader("Physics debugging")) {
 #define ADD_DBG_OPT(OPT, DESC)                                                 \
   bool _##OPT = debug_drawer.getSingleDebugMode(DebugDrawer::OPT);             \
   ImGui::Checkbox(DESC, &_##OPT);                                              \

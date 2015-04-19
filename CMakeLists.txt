@@ -96,14 +96,15 @@ if(BUILD_GUI)
         # utils
         src/utils/colors.h
         src/utils/gl.h
+        src/utils/math.hh
 
         # imgui
         imgui/imconfig.h
-        imgui/imgui.cpp
         imgui/imgui.h
         imgui/stb_rect_pack.h
         imgui/stb_textedit.h
         imgui/stb_truetype.h
+        imgui/imgui.cpp
     )
     target_link_libraries(${gui_app} sslsim
         sslsim_common
