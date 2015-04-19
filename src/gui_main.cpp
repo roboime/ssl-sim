@@ -539,6 +539,13 @@ int main(int, char **) {
     return EXIT_FAILURE;
   }
 
+  // XXX: somehow this seems to solve some segfaults on the looped glfwPollEvents
+  glfwPollEvents();
+
+  // more options
+  glfwMakeContextCurrent(window);
+  glfwSwapInterval(1);
+
   // start GLEW extension handler
   glewExperimental = GL_TRUE;
   if (glewInit() != GLEW_OK) {
@@ -570,25 +577,28 @@ int main(int, char **) {
   glfwSetWindowFocusCallback(window, window_focus_callback);
   glfwSetWindowSizeCallback(window, window_size_callback);
 
-  // more options
-  glfwMakeContextCurrent(window);
-  glfwSwapInterval(1);
-
   // bool show_test_window = true;
   // bool show_another_window = false;
 
   // Create a world
   world = new_world(&FIELD_2015);
-  draw_init(world);
+
+  // Add some robots
+  for (int i = 0; i < 6; i++) {
+    world_add_robot(world, i, TEAM_BLUE);
+    world_add_robot(world, i, TEAM_YELLOW);
+  }
 
   // Create and bind socket
   auto socket = new_socket(11002, "224.5.23.2");
   socket_sender_bind(socket);
 
+  // Init drawing
+  draw_init(world);
+
   while (!glfwWindowShouldClose(window)) {
     // ImGuiIO &io = ImGui::GetIO();
     mousePressed[0] = mousePressed[1] = false;
-    glfwPollEvents();
     update_imgui(window);
 
     // TODO: realtime step
@@ -599,11 +609,14 @@ int main(int, char **) {
     render();
 
     glfwSwapBuffers(window);
-    gui_sync();
+    glfwPollEvents();
 
     // network step after rendering
     // TODO: investigate whether this is worth doing on another thread
     network_step(socket);
+
+    // this works so that when not actually drawing it still run at about 60fps
+    gui_sync();
   }
 
   delete_socket(socket);
