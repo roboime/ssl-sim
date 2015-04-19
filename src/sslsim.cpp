@@ -367,7 +367,7 @@ Pos2 robot_get_pos(const Robot *robot) {
 }
 
 void robot_set_pos(Robot *robot, const Pos2 pos) {
-  auto transf = btTransform({0, 0, 1, pos.w}, {pos.x, pos.y, DROP_HEIGHT});
+  auto transf = btTransform({{0, 0, 1}, pos.w}, {pos.x, pos.y, DROP_HEIGHT});
   robot->body.setWorldTransform(transf);
   robot->body.activate(true);
 }
