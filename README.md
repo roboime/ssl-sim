@@ -28,3 +28,10 @@ travis build script (`.travis.yml`) is a great example and reference.
 
 Currently __OS X Yosemite__ and __Ubuntu 14.04/12.04__ are known to work.
 If you make it work on other systems please do add them here.
+
+Screenshots
+===========
+
+*shot
+
+![](media/screenshot1.png)
