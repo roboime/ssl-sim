@@ -17,87 +17,121 @@
 constexpr btScalar BALL_DIAM = 0.043;    // 43mm
 constexpr btScalar BALL_MASS = 0.046;    // 46g
 constexpr btScalar ROBOT_DIAM = 0.180;   // 180mm
-constexpr btScalar ROBOT_HEIGHT = 0.150; // 150mm
+constexpr btScalar ROBOT_HEIGHT = 0.145; // 145mm
 constexpr btScalar ROBOT_MASS = 2.000;   // 2lg
 constexpr btScalar DROP_HEIGHT = 0.500;  // 43mm
+constexpr btScalar WHEEL_DIAM = 0.050;
+constexpr btScalar WHEEL_WIDTH = 0.010;
+constexpr btScalar WHEEL_HEIGHT = 0.005; // the robot is 5mm up the ground
+constexpr int WHEELS_COUNT = 4;
+constexpr btScalar WHEELS_ANGLE[] = {RAD(60.0), RAD(135.0), RAD(-135.0),
+                                     RAD(-60.0)};
 
 typedef btRigidBody::btRigidBodyConstructionInfo btRigidBodyCI;
 
 static std::random_device rdevice{};
 static std::default_random_engine gen{rdevice()};
 static Pos2 random_robot_pos2(const FieldGeometry *f) {
-  std::uniform_real_distribution<Float> rx(
-      -f->field_length / 2 + ROBOT_DIAM / 2,
-      f->field_length / 2 + ROBOT_DIAM / 2);
-  std::uniform_real_distribution<Float> ry(-f->field_width / 2 + ROBOT_DIAM / 2,
-                                           f->field_width / 2 + ROBOT_DIAM / 2);
-  std::uniform_real_distribution<Float> rw(-RAD(180), RAD(180));
+  auto w = f->field_length / 2 - ROBOT_DIAM / 2;
+  auto h = f->field_width / 2 - ROBOT_DIAM / 2;
+  std::uniform_real_distribution<Float> rx(-w, w);
+  std::uniform_real_distribution<Float> ry(-h, h);
+  std::uniform_real_distribution<Float> rw(0, RAD(360));
   // return std::forward(rx(gen), ry(gen), rw(gen));
   return {rx(gen), ry(gen), rw(gen)};
 }
 
-extern "C" {
-
-// physics body
-struct BallCI : public btRigidBodyCI {
-  static struct Shape : public btSphereShape {
-    Shape() : btSphereShape{BALL_DIAM / 2} {}
-  } shape;
+static const struct BallCI : public btRigidBodyCI {
+  btSphereShape shape{BALL_DIAM / 2};
   BallCI() : btRigidBodyCI(BALL_MASS, nullptr, &shape, {0, 0, 0}) {
     m_restitution = 0.5;
   }
-};
+} ball_ci{};
 
-struct Ball {
-  static const BallCI ci;
+extern "C" struct Ball {
 
   Robot *last_touching_robot{nullptr};
 
-  btRigidBody body{ci};
+  btRigidBody body{ball_ci};
 
   Ball(void) {
-    // shape.calculateLocalInertia(mass, inertia);
+    body.setCcdMotionThreshold(0.005);   // 5mm
+    body.setCcdSweptSphereRadius(0.001); // 1mm
   }
 };
 
-extern "C++" {
-BallCI::Shape BallCI::shape{};
-const BallCI Ball::ci{};
-}
+static const struct RobotCI : public btRigidBodyCI {
+#if 0
+#if 0
+  btCylinderShapeZ chassis_shape{{ROBOT_DIAM / 2, ROBOT_DIAM / 2, ROBOT_HEIGHT / 2}};
+  btCompoundShape shape;
+  RobotCI() : btRigidBodyCI(ROBOT_MASS, nullptr, &shape, {0, 0, 0}) {
+    m_restitution = 0.2;
 
-struct RobotCI : public btRigidBodyCI {
-  static struct Shape : public btCylinderShapeZ {
-    Shape()
-        : btCylinderShapeZ{{ROBOT_DIAM / 2, ROBOT_DIAM / 2, ROBOT_HEIGHT / 2}} {
-    }
-  } shape;
+    btScalar h = ROBOT_HEIGHT / 2 - WHEEL_DIAM / 2 + WHEEL_HEIGHT;
+    shape.addChildShape(btTransform({0, 0, 0, 1}, {0, 0, h}), &chassis_shape);
+  }
+#else
+  btCylinderShapeZ shape{{ROBOT_DIAM / 2, ROBOT_DIAM / 2, ROBOT_HEIGHT / 2}};
   RobotCI() : btRigidBodyCI(ROBOT_MASS, nullptr, &shape, {0, 0, 0}) {
     m_restitution = 0.2;
   }
-};
+#endif
+#else
+  btCylinderShapeZ chassis_shape{
+      {ROBOT_DIAM / 2, ROBOT_DIAM / 2, ROBOT_HEIGHT / 2}};
+  btCylinderShapeX wheel_shape{
+      {WHEEL_WIDTH / 2, WHEEL_DIAM / 2, WHEEL_DIAM / 2}};
+  btCompoundShape shape{};
+  RobotCI() : btRigidBodyCI(ROBOT_MASS, nullptr, &shape, {0, 0, 0}) {
+    m_restitution = 0.2;
 
-struct Robot {
-  static const RobotCI ci;
+    btScalar h = ROBOT_HEIGHT / 2 - WHEEL_DIAM / 2 + WHEEL_HEIGHT;
+    shape.addChildShape(btTransform({0, 0, 0, 1}, {0, 0, h}), &chassis_shape);
 
+    const btVector3 dis{ROBOT_DIAM / 2 + WHEEL_WIDTH / 2, 0, 0};
+    for (int i = 0; i < 4; i++) {
+      auto rot = btQuaternion{{0, 0, -1}, WHEELS_ANGLE[i]};
+      auto pos = btMatrix3x3{rot} * dis;
+      shape.addChildShape(btTransform(rot, pos), &wheel_shape);
+    }
+  }
+#endif
+} robot_ci{};
+
+extern "C" struct Robot {
   int id;
   Team team;
 
-  btRigidBody body{ci};
+  btRigidBody chassis{robot_ci};
+  btRaycastVehicle::btVehicleTuning tuning{};
+  btDefaultVehicleRaycaster raycaster;
+  btRaycastVehicle vehicle{tuning, &chassis, &raycaster};
 
-  Robot(int id, Team team) : id(id), team(team) {
-    // shape.calculateLocalInertia(mass, inertia);
+  Robot(int id, Team team, btDynamicsWorld *dynamics)
+      : id{id}, team{team}, raycaster{dynamics} {
+    chassis.setActivationState(DISABLE_DEACTIVATION);
+
+    const btVector3 dis{ROBOT_DIAM / 2 - WHEEL_WIDTH / 2, 0,
+                        -ROBOT_HEIGHT / 2 + WHEEL_DIAM / 2 - WHEEL_HEIGHT};
+    for (int i = 0; i < WHEELS_COUNT; i++) {
+      auto rotm = btMatrix3x3{btQuaternion{{0, 0, -1}, WHEELS_ANGLE[i]}};
+      auto conp = rotm * dis;
+      auto wdir = rotm * btVector3{0, 1, 0};
+      auto axle = rotm * btVector3{1, 0, 0};
+      vehicle.addWheel(conp, wdir, axle, 0.00, WHEEL_DIAM / 2, tuning, false);
+      auto &wheel = vehicle.getWheelInfo(i);
+      wheel.m_suspensionStiffness = 5000.0;
+      wheel.m_wheelsDampingRelaxation = 20.0;
+      wheel.m_wheelsDampingCompression = 4.4;
+      wheel.m_frictionSlip = 1000.0;
+      wheel.m_rollInfluence = 0.1;
+    }
   }
 
-  // TODO: wheels and their joints
-
-  // DO NOT USE THIS CONSTRUCTOR:
-  Robot(void) : Robot(-1, TEAM_NONE) {}
+  // XXX: DO NOT USE THIS CONSTRUCTOR:
+  Robot(void) : id{-1}, team{TEAM_NONE}, raycaster{nullptr} {}
 };
-
-extern "C++" {
-RobotCI::Shape RobotCI::shape{};
-const RobotCI Robot::ci{};
-}
 
 struct PlaneCI : public btRigidBodyCI {
   btStaticPlaneShape shape;
@@ -110,28 +144,26 @@ struct PlaneCI : public btRigidBodyCI {
 
 struct GoalCI : public btRigidBodyCI {
   btBoxShape wall_side, wall_rear;
-  btCompoundShape goal_shape;
+  btCompoundShape shape;
   GoalCI(btScalar goal_width, btScalar goal_depth, btScalar goal_height,
          btScalar wall_width)
-      : btRigidBodyCI(0, nullptr, &goal_shape, {0, 0, 0}),
+      : btRigidBodyCI(0, nullptr, &shape, {0, 0, 0}),
         wall_side{
             {goal_depth / 2 + wall_width / 2, wall_width / 2, goal_height / 2}},
-        wall_rear{{wall_width / 2, goal_width / 2, goal_height / 2}},
-        goal_shape{} {
-    goal_shape.addChildShape(
+        wall_rear{{wall_width / 2, goal_width / 2, goal_height / 2}}, shape{} {
+    shape.addChildShape(
         btTransform({0, 0, 0, 1},
                     {-goal_depth / 2 - wall_width / 2,
                      -goal_width / 2 - wall_width / 2, goal_height / 2}),
         &wall_side);
-    goal_shape.addChildShape(
+    shape.addChildShape(
         btTransform({0, 0, 0, 1},
                     {-goal_depth / 2 - wall_width / 2,
                      +goal_width / 2 + wall_width / 2, goal_height / 2}),
         &wall_side);
-    goal_shape.addChildShape(
-        btTransform({0, 0, 0, 1},
-                    {-goal_depth - wall_width / 2, 0, goal_height / 2}),
-        &wall_rear);
+    shape.addChildShape(btTransform({0, 0, 0, 1}, {-goal_depth - wall_width / 2,
+                                                   0, goal_height / 2}),
+                        &wall_rear);
   }
 };
 
@@ -170,7 +202,7 @@ struct Field {
   }
 };
 
-struct World {
+extern "C" struct World {
   const FieldGeometry *const field_geometry;
 
   // the field (bounding box and goals)
@@ -241,10 +273,15 @@ struct World {
   }
 
   ~World(void) {
-    for (auto &robot : robots)
-      dynamics.removeRigidBody(&robot.body);
-    for (auto &ball : balls)
+    for (auto &robot : robots) {
+      // dynamics.removeRigidBody(robot.vehicle.getRigidBody());
+      dynamics.removeRigidBody(&robot.chassis);
+    }
+
+    for (auto &ball : balls) {
       dynamics.removeRigidBody(&ball.body);
+    }
+
     dynamics.removeRigidBody(&field.ground_body);
     dynamics.removeRigidBody(&field.ceil_body);
     dynamics.removeRigidBody(&field.left_wall_body);
@@ -256,6 +293,10 @@ struct World {
   }
 };
 
+// API implementation
+
+extern "C" {
+
 // world.h impl
 World *new_world(const FieldGeometry *field_geom) {
   return new World{field_geom};
@@ -263,8 +304,22 @@ World *new_world(const FieldGeometry *field_geom) {
 World *clone_world(const World *world) { return new World{world}; }
 void delete_world(World *world) { delete world; }
 
-void world_step(struct World *world, Float time_step, int max_substeps,
-                Float fixed_time_step) {
+void world_step(struct World *world) {
+  // TODO: realtime step
+  world_step_delta(world, 1.0 / 60, 2, 1.0 / 60 / 2);
+}
+
+void world_step_delta(struct World *world, Float time_step, int max_substeps,
+                      Float fixed_time_step) {
+  if (world->robots.size() > 0) {
+    constexpr btScalar force = 10.0;
+    world->robots[0].vehicle.applyEngineForce(force, 0);
+    world->robots[0].vehicle.applyEngineForce(force, 1);
+    world->robots[0].vehicle.applyEngineForce(force, 2);
+    world->robots[0].vehicle.applyEngineForce(force, 3);
+    // world->robots[0].vehicle.applyEngineForce(-force, 2);
+    // world->robots[0].vehicle.applyEngineForce(-force, 3);
+  }
   world->dynamics.stepSimulation(time_step, max_substeps, fixed_time_step);
   world->timestamp += time_step;
   world->frame_number++;
@@ -301,8 +356,9 @@ Robot *world_get_mut_robot(World *world, int index) {
 }
 
 void world_add_robot(World *world, int id, Team team) {
-  world->robots.emplace_back(id, team);
-  world->dynamics.addRigidBody(&world->robots.back().body);
+  world->robots.emplace_back(id, team, &world->dynamics);
+  world->dynamics.addRigidBody(&world->robots.back().chassis);
+  // world->dynamics.addVehicle(&world->robots.back().vehicle);
   robot_set_pos(&world->robots.back(),
                 random_robot_pos2(world->field_geometry));
   // TODO: robot position
@@ -357,19 +413,18 @@ int get_id(const Robot *robot) { return robot->id; }
 enum Team get_team(const Robot *robot) { return robot->team; }
 
 Pos2 robot_get_pos(const Robot *robot) {
-  auto trans = robot->body.getWorldTransform();
+  auto trans = robot->vehicle.getRigidBody()->getWorldTransform();
   auto orig = trans.getOrigin();
   auto rot = trans.getRotation();
-  // XXX: rot.getAngle() will get the rotation in respect to the quaternion
-  // axis,
-  // the correct way would be to project it to {0, 0, 1}
-  return {orig.getX(), orig.getY(), rot.getAngle()};
+  auto sign = rot.getAxis().getZ() > 0 ? 1 : -1;
+  return {orig.getX(), orig.getY(), sign * rot.getAngle()};
 }
 
 void robot_set_pos(Robot *robot, const Pos2 pos) {
   auto transf = btTransform({{0, 0, 1}, pos.w}, {pos.x, pos.y, DROP_HEIGHT});
-  robot->body.setWorldTransform(transf);
-  robot->body.activate(true);
+  robot->vehicle.getRigidBody()->setWorldTransform(transf);
+  // robot->body.setWorldTransform(transf);
+  // robot->body.activate(true);
 }
 
 Pos2 robot_get_vel(const Robot *robot);

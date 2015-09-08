@@ -108,7 +108,8 @@ static void scroll_callback(GLFWwindow *, double, double yoffset) {
   io.MouseWheel += (float)yoffset;
 }
 
-static void key_callback(GLFWwindow *window, int key, int, int action, int mods) {
+static void key_callback(GLFWwindow *window, int key, int, int action,
+                         int mods) {
 
   // Custom
   if (key == GLFW_KEY_ESCAPE && action == GLFW_RELEASE) {
@@ -539,7 +540,8 @@ int main(int, char **) {
     return EXIT_FAILURE;
   }
 
-  // XXX: somehow this seems to solve some segfaults on the looped glfwPollEvents
+  // XXX: somehow this seems to solve some segfaults on the looped
+  // glfwPollEvents
   glfwPollEvents();
 
   // more options
@@ -583,11 +585,15 @@ int main(int, char **) {
   // Create a world
   world = new_world(&FIELD_2015);
 
-  // Add some robots
+// Add some robots
+#if 0
   for (int i = 0; i < 6; i++) {
     world_add_robot(world, i, TEAM_BLUE);
     world_add_robot(world, i, TEAM_YELLOW);
   }
+#else
+  world_add_robot(world, 0, TEAM_BLUE);
+#endif
 
   // Create and bind socket
   auto socket = new_socket(11002, "224.5.23.2");
@@ -601,9 +607,7 @@ int main(int, char **) {
     mousePressed[0] = mousePressed[1] = false;
     update_imgui(window);
 
-    // TODO: realtime step
-    world_step(world, 1.0 / 60, 10, 1.0 / 600);
-    // world_step(world, 1.0 / 300, 10, 1.0 / 600);
+    world_step(world);
 
     // Rendering
     render();

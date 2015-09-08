@@ -22,8 +22,9 @@ struct World *new_world(const struct FieldGeometry *field);
 struct World *clone_world(const struct World *world);
 void delete_world(struct World *world);
 
-void world_step(struct World *world, Float time_step, int max_substeps,
-                Float fixed_time_step);
+void world_step(struct World *world);
+void world_step_delta(struct World *world, Float time_step, int max_substeps,
+                      Float fixed_time_step);
 
 const struct FieldGeometry *world_get_field(const struct World *world);
 

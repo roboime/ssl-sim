@@ -133,7 +133,7 @@ struct DebugDrawer : public btIDebugDraw {
   }
 #endif
 
-  int debug_mode{0};
+  int debug_mode{1};
   virtual void setDebugMode(int mode) { debug_mode = mode; }
   virtual int getDebugMode() const { return debug_mode; }
   inline void setSingleDebugMode(DebugDrawModes mode, bool on) {
@@ -552,33 +552,38 @@ void draw_robot(const Robot *robot) {
   // TODO: unify robot radius/height
   float r = 0.180 / 2;
   float h = 0.150;
-  constexpr float m = RAD(90.0); // mouth angle
+  constexpr float m = RAD(80.0); // mouth angle
   constexpr int DIVS{30};
   constexpr float STEP = (RAD(360.0) - m) / DIVS;
-  float w0 = w - m / 2;
+  float w0 = w + m / 2;
+
+  constexpr GLuint ALPHA{225};
+  glDisable(GL_TEXTURE_2D);
+  glEnable(GL_BLEND);
+  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
   // TODO: draw pattern instead of plain color
   switch (get_team(robot)) {
   case TEAM_BLUE:
-    glColor3ubv(BLUE);
+    glColor4ub(BLUE[0], BLUE[1], BLUE[2], ALPHA);
     break;
   case TEAM_YELLOW:
-    glColor3ubv(YELLOW);
+    glColor4ub(YELLOW[0], YELLOW[1], YELLOW[2], ALPHA);
     break;
   case TEAM_NONE:
-    glColor3ubv(GREY);
+    glColor4ub(GREY[0], GREY[1], GREY[2], ALPHA);
     break;
   }
 
   // TODO: validate, not sure if it's right
   glBegin(GL_TRIANGLE_FAN);
   for (int i = 0; i <= DIVS; i++) {
-    float a = w - m / 2 + i * STEP;
+    float a = w0 + i * STEP;
     glVertex3f(x + cos(a) * r, y + sin(a) * r, h);
   }
   glEnd();
 
-  glColor3ubv(GREY);
+  glColor4ub(GREY[0], GREY[1], GREY[2], ALPHA);
   glBegin(GL_QUAD_STRIP);
   for (int i = 0; i <= DIVS; i++) {
     float a = w0 + i * STEP;
@@ -588,6 +593,8 @@ void draw_robot(const Robot *robot) {
   glVertex3f(x + cos(w0) * r, y + sin(w0) * r, 0);
   glVertex3f(x + cos(w0) * r, y + sin(w0) * r, h);
   glEnd();
+
+  glDisable(GL_BLEND);
 }
 
 void draw_world_objects(void) {

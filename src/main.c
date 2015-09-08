@@ -77,7 +77,7 @@ int main(void) {
   int send_geometry = 0;
 
   while (keep_going) {
-    world_step(world, 1.0 / 60, 10, 1.0 / 600);
+    world_step(world);
 
     // TODO: log errors
     send_size = serialize_world(world, buffer, BUFFER_SIZE);
