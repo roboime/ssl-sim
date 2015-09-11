@@ -21,8 +21,8 @@ constexpr btScalar ROBOT_DIAM = 0.180;   // 180mm
 constexpr btScalar ROBOT_HEIGHT = 0.150; // 150mm
 constexpr btScalar ROBOT_MASS = 2.000;   // 2lg
 constexpr btScalar DROP_HEIGHT = 0.500;  // 43mm
-constexpr btScalar roda_esp = 0.010;
-constexpr btScalar roda_angulo[] = {RAD(60.0), RAD(135.0), RAD(-135.0),
+constexpr btScalar WHEEL_WIDTH = 0.010;
+constexpr btScalar WHEELS_ANGLE[] = {RAD(60.0), RAD(135.0), RAD(-135.0),
                                      RAD(-60.0)};
 
 typedef btRigidBody::btRigidBodyConstructionInfo btRigidBodyCI;
@@ -269,25 +269,22 @@ void delete_world(World *world) { delete world; }
 
 void world_step(struct World *world, Float time_step, int max_substeps,
                 Float fixed_time_step) {
-  for(int i=0; i<14; i++){
-    Robot *robot = world_get_mut_robot(world, i);
-    float force_val=sin(world->frame_number/10)*5;
-    float force_val2=cos(world->frame_number/10)*5;
-    Vec3 forces[4]={{force_val,force_val2,0},{force_val,force_val2,0},{force_val,force_val2,0},{force_val,force_val2,0}};
-    applyforces(robot, forces);
-  }
+  Robot *robot = world_get_mut_robot(world, 3);
+  btVector3 forces[4]={{10,10,0},{10,10,0},{10,10,0},{10,10,0}};
+  applyforces(robot, force[4]);
+  btVector3 force = robot->body.getTotalForce();
+  std::cout << "Robot Position: " << force.getX() << " "<< world->frame_number << std::endl;
   world->dynamics.stepSimulation(time_step, max_substeps, fixed_time_step);
   world->timestamp += time_step;
   world->frame_number++;
 }
-void applyforces(struct Robot *robot, struct Vec3 *forces){
+void applyforces(Robot *robot, btVector3 forces[4]){
   robot->body.clearForces();
-  const btVector3 dis{ROBOT_DIAM / 2 + roda_esp / 2, 0, 0};
+  const btVector3 dis{ROBOT_DIAM / 2 + WHEEL_WIDTH / 2, 0, 0};
   for (int i = 0; i < 4; i++) {
-    auto rot = btQuaternion{{0, 0, -1}, roda_angulo[i]};
+    auto rot = btQuaternion{{0, 0, -1}, WHEELS_ANGLE[i]};
     auto pos = btMatrix3x3{rot} * dis;
-    btVector3 force = {forces[i].x, forces[i].y, forces[i].z};
-    robot->body.applyForce(force, pos);
+    robot->body.applyForce(forces[i], pos);
   }
 }
 const FieldGeometry *world_get_field(const World *world) {

@@ -7,8 +7,7 @@
  */
 
 #include "sslsim.h"
-#include <iostream>
-using namespace std;
+
 #include <random>
 #include <btBulletDynamicsCommon.h>
 #include "utils/stack_vector.hh"
@@ -21,9 +20,6 @@ constexpr btScalar ROBOT_DIAM = 0.180;   // 180mm
 constexpr btScalar ROBOT_HEIGHT = 0.150; // 150mm
 constexpr btScalar ROBOT_MASS = 2.000;   // 2lg
 constexpr btScalar DROP_HEIGHT = 0.500;  // 43mm
-constexpr btScalar roda_esp = 0.010;
-constexpr btScalar roda_angulo[] = {RAD(60.0), RAD(135.0), RAD(-135.0),
-                                     RAD(-60.0)};
 
 typedef btRigidBody::btRigidBodyConstructionInfo btRigidBodyCI;
 
@@ -57,7 +53,7 @@ struct Ball {
 
   Robot *last_touching_robot{nullptr};
 
-  btRigidBody body{ci};
+  btRigidBody* body = new btRigidBody(ci);
 
   Ball(void) {
     // shape.calculateLocalInertia(mass, inertia);
@@ -86,7 +82,7 @@ struct Robot {
   int id;
   Team team;
 
-  btRigidBody body{ci};
+  btRigidBody* body = new btRigidBody(ci);
 
   Robot(int id, Team team) : id(id), team(team) {
     // shape.calculateLocalInertia(mass, inertia);
@@ -219,7 +215,7 @@ struct World {
     dynamics.addRigidBody(&field.left_goal_body);
     dynamics.addRigidBody(&field.right_goal_body);
     balls.emplace_back();
-    dynamics.addRigidBody(&balls.back().body);
+    dynamics.addRigidBody(balls.back().body);
     ball_set_vec(&balls.back(), {});
   }
 
@@ -246,9 +242,9 @@ struct World {
 
   ~World(void) {
     for (auto &robot : robots)
-      dynamics.removeRigidBody(&robot.body);
+      dynamics.removeRigidBody(robot.body);
     for (auto &ball : balls)
-      dynamics.removeRigidBody(&ball.body);
+      dynamics.removeRigidBody(ball.body);
     dynamics.removeRigidBody(&field.ground_body);
     dynamics.removeRigidBody(&field.ceil_body);
     dynamics.removeRigidBody(&field.left_wall_body);
@@ -269,27 +265,13 @@ void delete_world(World *world) { delete world; }
 
 void world_step(struct World *world, Float time_step, int max_substeps,
                 Float fixed_time_step) {
-  for(int i=0; i<14; i++){
-    Robot *robot = world_get_mut_robot(world, i);
-    float force_val=sin(world->frame_number/10)*5;
-    float force_val2=cos(world->frame_number/10)*5;
-    Vec3 forces[4]={{force_val,force_val2,0},{force_val,force_val2,0},{force_val,force_val2,0},{force_val,force_val2,0}};
-    applyforces(robot, forces);
-  }
   world->dynamics.stepSimulation(time_step, max_substeps, fixed_time_step);
   world->timestamp += time_step;
   world->frame_number++;
+  const Robot *robot = world_get_robot(world, 0);
+  robot->body->applyCentralForce(btVector3(3,4,0));
 }
-void applyforces(struct Robot *robot, struct Vec3 *forces){
-  robot->body.clearForces();
-  const btVector3 dis{ROBOT_DIAM / 2 + roda_esp / 2, 0, 0};
-  for (int i = 0; i < 4; i++) {
-    auto rot = btQuaternion{{0, 0, -1}, roda_angulo[i]};
-    auto pos = btMatrix3x3{rot} * dis;
-    btVector3 force = {forces[i].x, forces[i].y, forces[i].z};
-    robot->body.applyForce(force, pos);
-  }
-}
+
 const FieldGeometry *world_get_field(const World *world) {
   return world->field_geometry;
 }
@@ -322,7 +304,7 @@ Robot *world_get_mut_robot(World *world, int index) {
 
 void world_add_robot(World *world, int id, Team team) {
   world->robots.emplace_back(id, team);
-  world->dynamics.addRigidBody(&world->robots.back().body);
+  world->dynamics.addRigidBody(world->robots.back().body);
   robot_set_pos(&world->robots.back(),
                 random_robot_pos2(world->field_geometry));
   // TODO: robot position
@@ -340,15 +322,15 @@ btDiscreteDynamicsWorld *world_bt_dynamics(struct World *world) {
 
 // ball.h impl
 Vec3 ball_get_vec(const Ball *ball) {
-  auto trans = ball->body.getWorldTransform();
+  auto trans = ball->body->getWorldTransform();
   auto orig = trans.getOrigin();
   return {orig.getX(), orig.getY(), orig.getZ()};
 }
 
 void ball_set_vec(Ball *ball, const Vec2 vec) {
   auto transf = btTransform({0, 0, 0, 1}, {vec.x, vec.y, DROP_HEIGHT});
-  ball->body.setWorldTransform(transf);
-  ball->body.activate(true);
+  ball->body->setWorldTransform(transf);
+  ball->body->activate(true);
 }
 
 Pos3 ball_get_pos(const Ball *ball);
@@ -369,7 +351,7 @@ Float ball_get_speed2(const Ball *ball);
 /// fast squared speed (magnitude of velocity)
 Float ball_get_peak_speed2_from_last_kick(const Ball *ball);
 
-btRigidBody *ball_bt_rigid_body(Ball *ball) { return &ball->body; }
+btRigidBody *ball_bt_rigid_body(Ball *ball) { return ball->body; }
 
 // robot.h impl
 int get_id(const Robot *robot) { return robot->id; }
@@ -377,7 +359,7 @@ int get_id(const Robot *robot) { return robot->id; }
 enum Team get_team(const Robot *robot) { return robot->team; }
 
 Pos2 robot_get_pos(const Robot *robot) {
-  auto trans = robot->body.getWorldTransform();
+  auto trans = robot->body->getWorldTransform();
   auto orig = trans.getOrigin();
   auto rot = trans.getRotation();
   // XXX: rot.getAngle() will get the rotation in respect to the quaternion
@@ -388,8 +370,8 @@ Pos2 robot_get_pos(const Robot *robot) {
 
 void robot_set_pos(Robot *robot, const Pos2 pos) {
   auto transf = btTransform({{0, 0, 1}, pos.w}, {pos.x, pos.y, DROP_HEIGHT});
-  robot->body.setWorldTransform(transf);
-  robot->body.activate(true);
+  robot->body->setWorldTransform(transf);
+  robot->body->activate(true);
 }
 
 Pos2 robot_get_vel(const Robot *robot);

@@ -108,7 +108,8 @@ static void scroll_callback(GLFWwindow *, double, double yoffset) {
   io.MouseWheel += (float)yoffset;
 }
 
-static void key_callback(GLFWwindow *window, int key, int, int action, int mods) {
+static void key_callback(GLFWwindow *window, int key, int, int action,
+                         int mods) {
 
   // Custom
   if (key == GLFW_KEY_ESCAPE && action == GLFW_RELEASE) {
@@ -539,7 +540,8 @@ int main(int, char **) {
     return EXIT_FAILURE;
   }
 
-  // XXX: somehow this seems to solve some segfaults on the looped glfwPollEvents
+  // XXX: somehow this seems to solve some segfaults on the looped
+  // glfwPollEvents
   glfwPollEvents();
 
   // more options

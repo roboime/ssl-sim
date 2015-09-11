@@ -25,7 +25,7 @@ void robot_set_pos(struct Robot *robot, const struct Pos2 pos);
 struct Pos2 robot_get_vel(const struct Robot *robot);
 void robot_set_vel(struct Robot *robot, const struct Pos2 vel);
 
-void applyforces(struct Robot *robot, struct Vec3 *forces);
+void applyforces(Robot *robot, Vec3 *forces);
 /// return is C bool (1 for true, 0 for false)
 int robot_is_touching_robot(const struct Robot *robot,
                             const struct Robot *tobor);

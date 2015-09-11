@@ -269,7 +269,7 @@ void delete_world(World *world) { delete world; }
 
 void world_step(struct World *world, Float time_step, int max_substeps,
                 Float fixed_time_step) {
-  for(int i=0; i<14; i++){
+  for(int i; i<14; i++){
     Robot *robot = world_get_mut_robot(world, i);
     float force_val=sin(world->frame_number/10)*5;
     float force_val2=cos(world->frame_number/10)*5;
