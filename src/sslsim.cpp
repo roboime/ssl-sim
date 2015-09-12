@@ -387,23 +387,45 @@ void ball_set_vec(Ball *ball, const Vec2 vec) {
   ball->body.activate(true);
 }
 
-Pos3 ball_get_pos(const Ball *ball);
+Pos3 ball_get_pos(const Ball *ball) {
+  // TODO
+  return {0, 0, 0};
+}
 
-void ball_set_pos(Ball *ball, const Pos3 pos);
+void ball_set_pos(Ball *ball, const Pos3 pos) {
+  // TODO
+}
 
-Pos3 ball_get_vel(const Ball *ball);
+Pos3 ball_get_vel(const Ball *ball) {
+  // TODO
+  return {0, 0, 0, 0, 0, 0};
+}
 
-void ball_set_vel(Ball *ball, const Pos3 vel);
+void ball_set_vel(Ball *ball, const Pos3 vel) {
+  // TODO
+}
 
-int ball_is_touching_robot(const Ball *ball, const Robot *robot);
+int ball_is_touching_robot(const Ball *ball, const Robot *robot) {
+  // TODO
+  return 0;
+}
 
-Robot *ball_last_touching_robot(Ball *ball);
+Robot *ball_last_touching_robot(Ball *ball) {
+  // TODO
+  return nullptr;
+}
 
 /// fast squared speed (magnitude of velocity)
-Float ball_get_speed2(const Ball *ball);
+Float ball_get_speed2(const Ball *ball) {
+  // TODO
+  return 0.0;
+}
 
 /// fast squared speed (magnitude of velocity)
-Float ball_get_peak_speed2_from_last_kick(const Ball *ball);
+Float ball_get_peak_speed2_from_last_kick(const Ball *ball) {
+  // TODO
+  return 0.0;
+}
 
 btRigidBody *ball_bt_rigid_body(Ball *ball) { return &ball->body; }
 
@@ -427,14 +449,25 @@ void robot_set_pos(Robot *robot, const Pos2 pos) {
   // robot->body.activate(true);
 }
 
-Pos2 robot_get_vel(const Robot *robot);
+Pos2 robot_get_vel(const Robot *robot) {
+  // TODO
+  return {0, 0, 0};
+}
 
-void robot_set_vel(Robot *robot, const Pos2 vel);
+void robot_set_vel(Robot *robot, const Pos2 vel) {
+  // TODO
+}
 
 /// return is C bool (1 for true, 0 for false)
-int robot_is_touching_robot(const Robot *robot, const Robot *tobor);
+int robot_is_touching_robot(const Robot *robot, const Robot *tobor) {
+  // TODO
+  return 0;
+}
 
 /// fast squared speed (magnitude of velocity)
-Float robot_get_speed2(const Robot *robot);
+Float robot_get_speed2(const Robot *robot) {
+  // TODO
+  return 0.0;
+}
 
 } // end extern
