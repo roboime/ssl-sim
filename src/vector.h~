@@ -34,8 +34,16 @@ struct Pos2 {
 struct Pos3 {
   Float x, y, z, wx, wy, wz;
 };
-Float scalar_multiplication2(struct Vec3 v1, struct Vec3 v2);
-struct Vec3 multiplication_by_scalar2(struct Vec3 v, Float f);
+Float scalar_multiplication2(struct Vec3 v1, struct Vec3 v2){
+  return v1.x * v2.x + v1.y * v2.y + v1.z * v2.z;
+};
+struct Vec3 multiplication_by_scalar2(struct Vec3 v, Float f){
+  struct Vec3 a;
+  a.x=f*v.x;
+  a.y=f*v.y;
+  a.z=f*v.z;
+  return a;
+};
 // -----------------------------------------------------------------------------
 #ifdef __cplusplus
 

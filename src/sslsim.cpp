@@ -269,13 +269,10 @@ void delete_world(World *world) { delete world; }
 
 void world_step(struct World *world, Float time_step, int max_substeps,
                 Float fixed_time_step) {
-  for(int i=0; i<14; i++){
-    Robot *robot = world_get_mut_robot(world, i);
-    float force_val=sin(world->frame_number/10)*5;
-    float force_val2=cos(world->frame_number/10)*5;
-    Vec3 forces[4]={{force_val,force_val2,0},{force_val,force_val2,0},{force_val,force_val2,0},{force_val,force_val2,0}};
-    applyforces(robot, forces);
-  }
+  Vec3 v1{1,2,3}, v2{1,2,3};
+  float f=2.5;
+  std::cout << scalar_multiplication2(v1, v2) << std::endl;
+  std::cout << multiplication_by_scalar2(v1, f).x << std::endl;
   world->dynamics.stepSimulation(time_step, max_substeps, fixed_time_step);
   world->timestamp += time_step;
   world->frame_number++;
@@ -401,5 +398,17 @@ int robot_is_touching_robot(const Robot *robot, const Robot *tobor);
 
 /// fast squared speed (magnitude of velocity)
 Float robot_get_speed2(const Robot *robot);
+
+// vector.h impl
+Float scalar_multiplication2(struct Vec3 v1, struct Vec3 v2){
+  return v1.x * v2.x + v1.y * v2.y + v1.z * v2.z;
+};
+struct Vec3 multiplication_by_scalar2(struct Vec3 v, Float f){
+  struct Vec3 a;
+  a.x=f*v.x;
+  a.y=f*v.y;
+  a.z=f*v.z;
+  return a;
+};
 
 } // end extern
