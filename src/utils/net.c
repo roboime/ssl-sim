@@ -35,7 +35,7 @@ struct Socket {
 };
 
 struct Socket *new_socket_iface(int port, const char *addr, const char *iface) {
-  struct Socket *i = (struct Socket *)calloc(1, sizeof(struct Socket *));
+  struct Socket *i = (struct Socket *)malloc(sizeof(struct Socket));
 
   // open a UDP socket
   if ((i->sockfd = socket(PF_INET, SOCK_DGRAM, IPPROTO_IP)) < 0)
